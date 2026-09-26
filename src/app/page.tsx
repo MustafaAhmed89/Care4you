@@ -6,16 +6,9 @@ import { PageHeader, StatCard, Card, Badge, Avatar, EmptyState } from "@/compone
 import RegisterWalkInForm from "@/components/RegisterWalkInForm";
 import { inr, fmtTime, initials, ageGender } from "@/lib/format";
 import { STATUS_LABELS, STATUS_BADGE, SERVICE_LABELS, SOURCE_LABELS } from "@/lib/constants";
+import { todayRange } from "@/lib/day";
 
 export const dynamic = "force-dynamic";
-
-function todayRange() {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
-}
 
 export default async function QueuePage() {
   const { start, end } = todayRange();

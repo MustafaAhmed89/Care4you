@@ -4,16 +4,9 @@ import { addPayment } from "@/app/actions";
 import { PageHeader, Card, CardHeader, Badge, StatCard, EmptyState } from "@/components/ui";
 import { inr, fmtDate } from "@/lib/format";
 import { STATUS_BADGE } from "@/lib/constants";
+import { todayRange } from "@/lib/day";
 
 export const dynamic = "force-dynamic";
-
-function todayRange() {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
-}
 
 export default async function BillingPage() {
   const { start, end } = todayRange();

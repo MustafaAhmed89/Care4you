@@ -1,8 +1,9 @@
-import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+import { CLINIC_TZ } from "@/lib/day";
 import RoleSwitcher from "./RoleSwitcher";
 
 export default function TopBar({ role, clinicPhone }: { role: string; clinicPhone: string }) {
-  const today = format(new Date(), "EEEE, d MMMM yyyy");
+  const today = formatInTimeZone(new Date(), CLINIC_TZ, "EEEE, d MMMM yyyy");
   return (
     <header className="no-print sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur md:px-6">
       <div className="min-w-0">

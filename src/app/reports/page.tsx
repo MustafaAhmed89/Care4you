@@ -3,6 +3,7 @@ import { PageHeader, Card, CardHeader, StatCard } from "@/components/ui";
 import { inr } from "@/lib/format";
 import { format, subDays } from "date-fns";
 import { SERVICE_LABELS } from "@/lib/constants";
+import { todayRange } from "@/lib/day";
 
 export const dynamic = "force-dynamic";
 
@@ -14,14 +15,6 @@ const ITEM_LABELS: Record<string, string> = {
   PHARMACY: "Pharmacy",
   OTHER: "Other",
 };
-
-function todayRange() {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
-}
 
 export default async function ReportsPage() {
   const { start, end } = todayRange();

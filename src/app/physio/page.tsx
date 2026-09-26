@@ -4,16 +4,9 @@ import { prisma } from "@/lib/db";
 import { recordPhysioSession, createPhysioPackage, sendMessage } from "@/app/actions";
 import { PageHeader, Card, CardHeader, Badge, StatCard, EmptyState } from "@/components/ui";
 import { inr, fmtDate } from "@/lib/format";
+import { todayRange } from "@/lib/day";
 
 export const dynamic = "force-dynamic";
-
-function todayRange() {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
-}
 
 export default async function PhysioPage() {
   const { start, end } = todayRange();
