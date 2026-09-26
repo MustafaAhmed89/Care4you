@@ -16,3 +16,8 @@ public/uploads/*
 .env*.local
 .DS_Store
 .vercel
+.neon
+
+# Neon agent tooling (regenerable via `neon skills` / `neon mcp`)
+.claude/skills/
+skills-lock.json

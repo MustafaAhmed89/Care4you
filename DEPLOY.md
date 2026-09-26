@@ -1,85 +1,64 @@
-# Deploy OrthoCare to Vercel + Postgres (public demo URL)
+# Deploy OrthoCare — public demo URL
 
-~10 minutes. Free tier throughout. You'll need **GitHub**, **Vercel**, and **Neon** (Postgres) accounts — all free. The code is already prepped for this; steps that need your accounts are called out.
+**Status:** the **Neon Postgres** database is already set up via the Neon CLI:
+- Project **Care4you** (`billowing-cake-48701577`), branch **production**, region `aws-us-east-2`.
+- Tables created (`prisma db push`) and demo data loaded (`npm run seed`).
+- The app has been verified running against it locally.
+- Credentials live in `.env` (auto-populated by `neon link`, gitignored): `DATABASE_URL` (pooled) + `DATABASE_URL_UNPOOLED` (direct).
 
-> Why Neon: free serverless Postgres with built-in connection pooling (which Vercel's serverless functions need). Supabase or Vercel Postgres work too — just paste their URLs.
+**What's left for a public URL:** push to GitHub, then deploy on Vercel (both need your accounts).
 
 ---
 
-## Step 1 — Create the Postgres database (Neon)
+## Step 1 — Push to GitHub
 
-1. Sign up at **https://neon.tech** → create a project (region: pick one near India, e.g. `ap-southeast-1`).
-2. In the project's **Connection Details**, copy **two** connection strings:
-   - **Pooled** connection — the host contains **`-pooler`**. This is `DATABASE_URL`.
-   - **Direct** connection — the host **without** `-pooler`. This is `DIRECT_URL`.
-   Both should end with `?sslmode=require`.
-
-## Step 2 — Create tables + load demo data (from your machine)
-
-```bash
-cd D:\OrthoCare
-# put the two URLs from Step 1 into .env (DATABASE_URL and DIRECT_URL)
-npm install
-npm run db:deploy   # creates all tables in Neon (prisma db push)
-npm run seed        # loads OrthoCure's demo clinic + a day of data
-```
-
-Tip: re-run `npm run reset` anytime (e.g. right before a pitch) to wipe and reload fresh demo data.
-
-## Step 3 — Push the code to GitHub
-
-A git repo is already initialized with a first commit. Create an empty GitHub repo (private is fine), then:
+Create an empty GitHub repo, then:
 
 ```bash
 git remote add origin https://github.com/<you>/orthocare.git
-git branch -M main
 git push -u origin main
 ```
+(or `gh repo create orthocare --private --source=. --push`)
 
-(Or use the GitHub CLI: `gh repo create orthocare --private --source=. --push`.)
+## Step 2 — Deploy on Vercel
 
-## Step 4 — Import to Vercel
+1. Go to **https://vercel.com/new** → import the `orthocare` repo (framework auto-detected: Next.js; build command `npm run build` already runs `prisma generate`).
+2. Provide the two database env vars. Two ways:
+   - **Recommended — Neon–Vercel integration:** in Vercel add the **Neon** integration (or from the Neon Console → Integrations → Vercel) and connect the **Care4you** project. It injects `DATABASE_URL` and `DATABASE_URL_UNPOOLED` automatically.
+   - **Manual:** copy the two values from your local `.env` into Vercel → Project → Settings → Environment Variables (`DATABASE_URL`, `DATABASE_URL_UNPOOLED`).
+3. **Deploy.** In ~1–2 min you get a public URL like `https://orthocare-<hash>.vercel.app`.
 
-**Option A — Dashboard (easiest):**
-1. Go to **https://vercel.com/new** → **Import** your `orthocare` repo.
-2. Framework preset: **Next.js** (auto-detected). Leave build/install commands as default — `npm run build` already runs `prisma generate`.
-3. Expand **Environment Variables** and add:
-   | Name | Value |
-   |------|-------|
-   | `DATABASE_URL` | your Neon **pooled** URL |
-   | `DIRECT_URL` | your Neon **direct** URL |
-   | `MESSAGING_PROVIDER` | *(leave unset for the demo)* |
-4. Click **Deploy**. In ~1–2 minutes you'll get a public URL like `https://orthocare-<hash>.vercel.app`.
-
-**Option B — Vercel CLI:**
+**Vercel CLI alternative:**
 ```bash
-npm i -g vercel
-vercel login
-vercel                     # link/create the project, first deploy (preview)
-vercel env add DATABASE_URL production   # paste pooled URL when prompted
-vercel env add DIRECT_URL production     # paste direct URL when prompted
-vercel --prod              # promote to the public production URL
+npm i -g vercel && vercel login
+vercel                                   # link + first (preview) deploy
+vercel env add DATABASE_URL production            # paste pooled URL
+vercel env add DATABASE_URL_UNPOOLED production    # paste direct URL
+vercel --prod                            # promote to production URL
 ```
 
-## Step 5 — Verify
-
-Open the Vercel URL → you should see today's queue with OrthoCure's data (same as local). Log a walk-in, send a WhatsApp (mock), print an Rx — all should work.
+## Step 3 — Verify
+Open the Vercel URL → today's queue with OrthoCure's data should load (same as local).
 
 ---
 
-## Before a live demo
-- **Reset data:** `npm run reset` locally (it targets the same Neon DB), so the demo starts clean.
-- **Make it their clinic:** open **/settings** on the live site and set the clinic name, doctor + NMC number, logo, GST/AERB — it flows onto the header, prescriptions and receipts.
-- **Custom domain (optional):** Vercel → Project → Settings → Domains.
+## Managing the demo
+- **Reset data before a pitch:** `npm run reset` (targets the Neon DB).
+- **Make it their clinic:** open `/settings` on the live site → set clinic name, doctor + NMC number, logo, GST/AERB.
+- **Neon connection strings on demand:** `neon connection-string production --pooled` (and without `--pooled` for direct).
+- **Re-apply Neon policy:** `neon deploy` (currently a no-op — `neon.ts` is an empty policy; Postgres only).
+
+## Security / cleanup
+- `neon mcp` minted a **full-access account API key** (id **3368080**) and wrote it into your local MCP configs (Claude/Cursor/Copilot/VS Code). If you don't want a broad key sitting in those files, revoke it: `neon api-keys revoke 3368080`.
+- `.env`, `.neon`, and the Neon skills folder are gitignored — no secrets are committed.
 
 ## Notes & limits (demo scope)
-- **X-ray images** are stored as base64 data URLs in Postgres (zero-config, works on serverless). For production scale, switch `uploadStudy()` in `src/lib/actions` to **Vercel Blob** or **S3** and store a URL instead.
-- **WhatsApp** is still the mock provider until you wire a BSP (set `MESSAGING_PROVIDER=bsp` and implement `BspProvider.send()` in `src/lib/messaging.ts`). See requirements §14.
-- **Auth:** the role switcher is demo-only; add real authentication before real patient data goes in.
-- **Secrets:** never commit `.env` (it's gitignored). Env vars live in the Vercel dashboard.
+- **X-ray images** are stored as base64 data URLs in Postgres (works on serverless; use Vercel Blob/S3 at scale).
+- **WhatsApp** is the mock provider until a BSP is wired (`MESSAGING_PROVIDER=bsp` + implement `BspProvider.send()` in `src/lib/messaging.ts`). See requirements §14.
+- **Auth:** the role switcher is demo-only — add real authentication before real patient data.
+- **Pooling:** the app uses the pooled `DATABASE_URL` at runtime; `prisma db push`/migrations use `DATABASE_URL_UNPOOLED`.
 
 ## Troubleshooting
-- **`P1001 can't reach database`** → check the URL, ensure `?sslmode=require`, and that you used the **pooled** URL for `DATABASE_URL`.
-- **Prisma errors on Vercel build** → confirm `prisma` is installed (it is, in devDependencies) and the build command is `npm run build` (runs `prisma generate`).
-- **Tables missing on the live site** → you skipped Step 2; run `npm run db:deploy` against the Neon URL.
-- **Too many connections** → make sure `DATABASE_URL` is the **`-pooler`** host.
+- **`P1001 can't reach database`** → check the URL and that `DATABASE_URL` is the `-pooler` host with `?sslmode=require`.
+- **Prisma errors on Vercel build** → build command must be `npm run build` (runs `prisma generate`); `prisma` is in devDependencies (installed during build).
+- **Tables missing** → run `npm run db:deploy` against the Neon URL.
