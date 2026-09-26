@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="70%">
+      <stop offset="0%" stop-color="#1b2a33"/>
+      <stop offset="100%" stop-color="#05090c"/>
+    </radialGradient>
+    <linearGradient id="bone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e8eef2"/>
+      <stop offset="100%" stop-color="#9fb0bb"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#bg)"/>
+  <!-- femur -->
+  <path d="M175 20 C170 90 172 120 165 150 C210 165 235 160 240 150 C232 118 233 88 228 20 Z" fill="url(#bone)" opacity="0.9"/>
+  <!-- condyles -->
+  <ellipse cx="180" cy="175" rx="34" ry="26" fill="url(#bone)" opacity="0.92"/>
+  <ellipse cx="228" cy="176" rx="30" ry="24" fill="url(#bone)" opacity="0.92"/>
+  <!-- joint space -->
+  <rect x="150" y="196" width="110" height="10" rx="5" fill="#0a1218" opacity="0.7"/>
+  <!-- tibia -->
+  <path d="M158 210 C150 270 156 330 165 385 L242 385 C250 320 250 270 246 210 C210 224 182 224 158 210 Z" fill="url(#bone)" opacity="0.9"/>
+  <!-- patella -->
+  <ellipse cx="150" cy="182" rx="16" ry="22" fill="#cfdae1" opacity="0.75"/>
+  <!-- fibula -->
+  <path d="M250 214 C256 280 256 330 252 384 L268 384 C270 320 268 270 264 216 Z" fill="url(#bone)" opacity="0.8"/>
+  <text x="20" y="380" fill="#5b6e78" font-family="monospace" font-size="14">R · KNEE · AP</text>
+  <text x="300" y="34" fill="#5b6e78" font-family="monospace" font-size="12">DEMO</text>
+</svg>

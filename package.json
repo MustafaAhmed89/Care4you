@@ -1,0 +1,35 @@
+{
+  "name": "orthocare",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OrthoCare — clinic management MVP demo for small Bengaluru clinics",
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start -p 3000",
+    "lint": "next lint",
+    "postinstall": "prisma generate",
+    "db:deploy": "prisma db push",
+    "seed": "node prisma/seed.mjs",
+    "setup": "prisma db push && node prisma/seed.mjs",
+    "reset": "prisma db push --force-reset && node prisma/seed.mjs"
+  },
+  "dependencies": {
+    "@prisma/client": "5.22.0",
+    "date-fns": "3.6.0",
+    "lucide-react": "0.454.0",
+    "next": "14.2.15",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "20.16.11",
+    "@types/react": "18.3.11",
+    "@types/react-dom": "18.3.0",
+    "autoprefixer": "10.4.20",
+    "postcss": "8.4.47",
+    "prisma": "5.22.0",
+    "tailwindcss": "3.4.14",
+    "typescript": "5.6.3"
+  }
+}

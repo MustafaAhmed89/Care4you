@@ -1,0 +1,240 @@
+// OrthoCare schema (PostgreSQL — for local dev + Vercel deploy).
+// DATABASE_URL = pooled connection (app runtime); DIRECT_URL = direct connection
+// (used by `prisma db push`). Create a free DB at neon.tech — see DEPLOY.md.
+// "Enum-like" fields are Strings whose allowed values live in src/lib/constants.ts
+// (kept as Strings so the model stays portable; swap to native enums later if desired).
+// To run fully offline on SQLite instead, set provider="sqlite", remove directUrl,
+// and set DATABASE_URL="file:./dev.db".
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Clinic {
+  id             String   @id @default(cuid())
+  name           String
+  tagline        String?
+  address        String?
+  phone          String?
+  logoInitials   String   @default("OC")
+  brandColor     String   @default("#0f8785")
+  doctorName     String?
+  nmcRegNo       String?
+  gstRegistered  Boolean  @default(false)
+  gstin          String?
+  aerbLicenceNo  String?
+  aerbRso        String?
+  aerbRenewal    DateTime?
+  kpmeRegNo      String?
+  pharmacyEnabled Boolean @default(false)
+  createdAt      DateTime @default(now())
+}
+
+model Staff {
+  id        String   @id @default(cuid())
+  name      String
+  role      String // OWNER_DOCTOR | FRONT_DESK | PHYSIO | PHARMACIST | ADMIN
+  nmcRegNo  String?
+  phone     String?
+  active    Boolean  @default(true)
+  isProvider Boolean @default(false) // shows in queue/booking (doctor + physios)
+  createdAt DateTime @default(now())
+
+  appointments Appointment[]
+  visits       Visit[]
+  physioSessions PhysioSession[] @relation("TherapistSessions")
+  payments     Payment[]
+}
+
+model Patient {
+  id            String   @id @default(cuid())
+  name          String
+  phone         String
+  gender        String?  // M | F | O
+  age           Int?
+  address       String?
+  abhaNumber    String?
+  whatsappOptIn Boolean  @default(true)
+  consentStatus String   @default("GRANTED") // GRANTED | DECLINED | PENDING
+  consentAt     DateTime?
+  createdAt     DateTime @default(now())
+  softDeleted   Boolean  @default(false)
+
+  appointments  Appointment[]
+  visits        Visit[]
+  studies       ImagingStudy[]
+  packages      PhysioPackage[]
+  invoices      Invoice[]
+  messages      Message[]
+}
+
+model Appointment {
+  id            String   @id @default(cuid())
+  patientId     String
+  providerId    String
+  serviceType   String   // CONSULT | PHYSIO | XRAY | FOLLOWUP
+  scheduledStart DateTime
+  status        String   @default("BOOKED") // BOOKED|CONFIRMED|CHECKED_IN|IN_PROGRESS|COMPLETED|CANCELLED|NO_SHOW|RESCHEDULED
+  source        String   @default("WALK_IN") // PHONE | WALK_IN | WHATSAPP
+  tokenNo       Int?
+  reason        String?
+  createdAt     DateTime @default(now())
+
+  patient   Patient @relation(fields: [patientId], references: [id])
+  provider  Staff   @relation(fields: [providerId], references: [id])
+  visit     Visit?
+  messages  Message[]
+}
+
+model Visit {
+  id            String   @id @default(cuid())
+  patientId     String
+  appointmentId String?  @unique
+  providerId    String
+  date          DateTime @default(now())
+  encounterType String   @default("FIRST") // FIRST | FOLLOW_UP
+  complaint     String?
+  injurySite    String?
+  injurySide    String?  // LEFT | RIGHT | NA
+  diagnosis     String?
+  plan          String?
+  followUpWeeks Int?
+  notes         String?
+
+  patient      Patient @relation(fields: [patientId], references: [id])
+  provider     Staff   @relation(fields: [providerId], references: [id])
+  appointment  Appointment? @relation(fields: [appointmentId], references: [id])
+  prescription Prescription?
+  invoices     Invoice[]
+  studies      ImagingStudy[]
+}
+
+model Prescription {
+  id        String   @id @default(cuid())
+  visitId   String   @unique
+  createdAt DateTime @default(now())
+  advice    String?
+
+  visit Visit    @relation(fields: [visitId], references: [id])
+  lines RxLine[]
+}
+
+model RxLine {
+  id             String @id @default(cuid())
+  prescriptionId String
+  genericName    String
+  brandName      String?
+  dose           String?
+  frequency      String?
+  duration       String?
+  scheduleFlag   String @default("NONE") // NONE | H | H1
+
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+}
+
+model ImagingStudy {
+  id           String   @id @default(cuid())
+  patientId    String
+  visitId      String?
+  bodyPart     String
+  view         String?
+  side         String?  // LEFT | RIGHT | NA
+  studyDate    DateTime @default(now())
+  reportStatus String   @default("READY") // PENDING | READY | SHARED
+  reportText   String?
+  imagePath    String?
+  sharedAt     DateTime?
+
+  patient Patient @relation(fields: [patientId], references: [id])
+  visit   Visit?  @relation(fields: [visitId], references: [id])
+}
+
+model PhysioPackage {
+  id            String   @id @default(cuid())
+  patientId     String
+  name          String
+  totalSessions Int
+  sessionsUsed  Int      @default(0)
+  price         Int // whole rupees
+  purchaseDate  DateTime @default(now())
+  expiryDate    DateTime?
+  status        String   @default("ACTIVE") // ACTIVE | COMPLETED | EXPIRED
+
+  patient  Patient        @relation(fields: [patientId], references: [id])
+  sessions PhysioSession[]
+}
+
+model PhysioSession {
+  id          String   @id @default(cuid())
+  packageId   String
+  therapistId String?
+  date        DateTime @default(now())
+  attended    Boolean  @default(true)
+  painScore   Int?
+  note        String?
+
+  package   PhysioPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  therapist Staff?        @relation("TherapistSessions", fields: [therapistId], references: [id])
+}
+
+model Invoice {
+  id        String   @id @default(cuid())
+  patientId String
+  visitId   String?
+  date      DateTime @default(now())
+  status    String   @default("UNPAID") // PAID | PARTIAL | UNPAID
+  notes     String?
+
+  patient  Patient       @relation(fields: [patientId], references: [id])
+  visit    Visit?        @relation(fields: [visitId], references: [id])
+  lines    InvoiceLine[]
+  payments Payment[]
+}
+
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  itemType    String  // CONSULT | PROCEDURE | PHYSIO | XRAY | PHARMACY | OTHER
+  description String
+  qty         Int     @default(1)
+  unitPrice   Int // whole rupees
+  gstExempt   Boolean @default(true)
+  hsnCode     String?
+  gstRate     Int     @default(0) // percent
+  lineTotal   Int
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  invoiceId     String
+  amount        Int // whole rupees
+  mode          String   // CASH | UPI | CARD
+  paidAt        DateTime @default(now())
+  collectedById String?
+
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  collectedBy Staff?  @relation(fields: [collectedById], references: [id])
+}
+
+model Message {
+  id            String   @id @default(cuid())
+  patientId     String
+  appointmentId String?
+  channel       String   @default("WHATSAPP") // WHATSAPP | SMS
+  type          String   // CONFIRM | REMINDER_24H | REMINDER_2H | REPORT_SHARE | RECALL | DUES
+  body          String
+  status        String   @default("QUEUED") // QUEUED | SENT | DELIVERED | READ | FAILED
+  createdAt     DateTime @default(now())
+  sentAt        DateTime?
+
+  patient     Patient      @relation(fields: [patientId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+}
