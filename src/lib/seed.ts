@@ -23,6 +23,9 @@ function daysAgo(n: number) {
 
 export async function seedDemo(prisma: PrismaClient) {
   // children first
+  await prisma.referral.deleteMany();
+  await prisma.physioRomEntry.deleteMany();
+  await prisma.physioAssessment.deleteMany();
   await prisma.message.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.invoiceLine.deleteMany();
@@ -232,6 +235,30 @@ export async function seedDemo(prisma: PrismaClient) {
   await msg(P.arjun, "REMINDER_24H", "Reminder: Arjun Menon, you have an appointment with Dr. Gaurav Sharma at OrthoCure Clinic tomorrow at 12:00 PM. Reply CANCEL or RESCHEDULE if you can't make it. — OrthoCure Clinic", "DELIVERED", daysAgo(0));
   await msg(P.lakshmi, "REPORT_SHARE", "Hello Lakshmi Devi, your Right Knee X-ray from OrthoCure Clinic is ready and attached. Keep it for your records. — OrthoCure Clinic", "DELIVERED", at(10, 5));
   await msg(P.deepa, "RECALL", "Hi Deepa Shetty, your Knee Rehabilitation package has 2 sessions left and expires soon. Reply to book your next session. — OrthoCure Clinic", "SENT", at(9, 0));
+
+  // Referral letters (F-08)
+  await prisma.referral.create({
+    data: {
+      patientId: P.lakshmi.id, providerId: drGaurav.id, visitId: vLakshmi.id, date: at(10, 2),
+      referToName: "Dr. Sridhar Rao", specialty: "Joint Replacement / Arthroplasty", referToFacility: "Aster CMI Hospital, Hebbal",
+      urgency: "ROUTINE",
+      reason: "Advanced osteoarthritis, right knee — for opinion on total knee replacement.",
+      clinicalSummary:
+        "Presenting complaint: Right knee pain and stiffness for 6 months, limiting walking.\nWorking diagnosis: Osteoarthritis, right knee.\nX-ray (AP + Lateral): reduced medial joint space with marginal osteophytes (Grade 2).\nManagement so far: NSAIDs and physiotherapy with limited relief.",
+      medications: "Etoricoxib (Etoshine) 90 mg, 0-0-1\nPantoprazole (Pan) 40 mg, 1-0-0",
+    },
+  });
+  await prisma.referral.create({
+    data: {
+      patientId: P.rajesh.id, providerId: drGaurav.id, date: daysAgo(1),
+      referToName: "Dr. Anil Kishore", specialty: "Spine Surgery", referToFacility: "Manipal Hospital, Old Airport Road",
+      urgency: "URGENT",
+      reason: "Chronic low back pain with left leg radiculopathy, not responding adequately to conservative care — for MRI lumbar spine and surgical opinion.",
+      clinicalSummary:
+        "Presenting complaint: Low back pain radiating to the left leg for 3 months.\nManagement so far: 2 of 10 physiotherapy sessions completed; Oswestry Disability Index remains high (≈32%) with persistent radicular symptoms despite conservative treatment.\nNo red-flag bladder/bowel symptoms at present.",
+      medications: "Pregabalin 75 mg, 0-0-1\nParacetamol 650 mg, SOS",
+    },
+  });
 
   const patientCount = await prisma.patient.count();
   const apptCount = await prisma.appointment.count();

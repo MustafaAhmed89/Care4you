@@ -91,6 +91,31 @@ export const SCHEDULE_FLAG_LABELS: Record<string, string> = {
   H1: "Schedule H1",
 };
 
+// Referral letters (F-08)
+export const REFERRAL_URGENCY_LABELS: Record<string, string> = {
+  ROUTINE: "Routine",
+  URGENT: "Urgent",
+};
+
+// Common onward-referral targets for an ortho + physio clinic (form suggestions).
+export const REFERRAL_SPECIALTIES = [
+  "Spine Surgery",
+  "Joint Replacement / Arthroplasty",
+  "Sports Medicine",
+  "Rheumatology",
+  "Neurology",
+  "Neurosurgery",
+  "Pain Management",
+  "Endocrinology (Osteoporosis / Diabetes)",
+  "General Surgery",
+  "MRI Scan",
+  "CT Scan",
+  "DEXA (Bone Densitometry)",
+  "Nerve Conduction Study / EMG",
+  "Physiotherapy (external)",
+  "Higher Centre / Hospital Admission",
+] as const;
+
 // Which nav items each role sees (demo RBAC).
 export type NavKey =
   | "queue"

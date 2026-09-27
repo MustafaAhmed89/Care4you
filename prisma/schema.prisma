@@ -51,6 +51,7 @@ model Staff {
   physioSessions PhysioSession[] @relation("TherapistSessions")
   payments     Payment[]
   assessments  PhysioAssessment[] @relation("TherapistAssessments")
+  referrals    Referral[]         @relation("ProviderReferrals")
 }
 
 model Patient {
@@ -74,6 +75,7 @@ model Patient {
   invoices      Invoice[]
   messages      Message[]
   assessments   PhysioAssessment[]
+  referrals     Referral[]
 }
 
 model Appointment {
@@ -115,6 +117,7 @@ model Visit {
   prescription Prescription?
   invoices     Invoice[]
   studies      ImagingStudy[]
+  referrals    Referral[]
 }
 
 model Prescription {
@@ -272,4 +275,26 @@ model Message {
   appointment Appointment? @relation(fields: [appointmentId], references: [id])
 
   @@index([providerId])
+}
+
+model Referral {
+  id              String   @id @default(cuid())
+  patientId       String
+  providerId      String // referring clinician (Staff)
+  visitId         String? // optional link to the originating visit
+  date            DateTime @default(now())
+  referToName     String // specialist / doctor the patient is referred to
+  referToFacility String? // hospital / diagnostic centre
+  specialty       String? // e.g. Spine Surgery, Rheumatology, MRI
+  urgency         String   @default("ROUTINE") // ROUTINE | URGENT
+  reason          String // reason for referral / provisional diagnosis
+  clinicalSummary String? // history, examination & investigations done
+  medications     String? // current relevant medication
+  createdAt       DateTime @default(now())
+
+  patient  Patient @relation(fields: [patientId], references: [id])
+  provider Staff   @relation("ProviderReferrals", fields: [providerId], references: [id])
+  visit    Visit?  @relation(fields: [visitId], references: [id])
+
+  @@index([patientId])
 }
