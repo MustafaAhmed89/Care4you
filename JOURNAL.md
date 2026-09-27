@@ -96,7 +96,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 - `prisma/schema.prisma` — data model (see PRD §11). `prisma/seed.mjs` — demo clinic + a realistic day.
 - `src/app/actions.ts` — all server actions (mutations).
 - `src/lib/` — `db.ts` (Prisma client), `messaging.ts` (WhatsApp provider), `constants.ts` (enum-like values), `format.ts` (IST formatting), `day.ts` (IST today-range), `session.ts` (cookie role), `export.ts` + `csv.ts` (F-26 data export/backup).
-- `src/components/` — UI primitives + client forms (NewVisitForm, NewInvoiceForm, UploadStudyForm, RegisterWalkInForm, NewAssessmentForm, NewReferralForm, AppointmentActions, NewImagingOrderForm, CaptureStudyForm, NewHepForm, RoleSwitcher, Sidebar, TopBar, MobileNav, PrintButton).
+- `src/components/` — UI primitives + client forms (NewVisitForm, NewInvoiceForm, UploadStudyForm, RegisterWalkInForm, NewAssessmentForm, NewReferralForm, AppointmentActions, NewImagingOrderForm, CaptureStudyForm, NewHepForm, LoginForm, UserMenu, Sidebar, TopBar, MobileNav, PrintButton).
 - `src/middleware.ts` — sets an `x-pathname` header so the root layout renders patient-facing `/appt/*` pages **bare** (no staff sidebar / role switcher).
 
 ---
@@ -145,7 +145,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 2. 🟡 **Real WhatsApp — code DONE (Meta Cloud API).** `MetaCloudProvider` in `src/lib/messaging.ts` sends approved **template** messages; each message type → template name + ordered params via `buildMessage` (verified: CONFIRM/2H = 5 params, 24H = 4, REPORT/RECALL/DUES = 3). Mock stays the default. **To go live (user):** Meta Business + app, phone-number ID, permanent token, create the 6 Utility templates, set `MESSAGING_PROVIDER=meta` + `WHATSAPP_*` env in Vercel, redeploy — full guide in **`WHATSAPP.md`**. Caveat: seeded demo phone numbers are fake, so real sends to them fail — demo with a real opted-in number. Follow-ups: ✅ webhook route `/api/whatsapp/webhook` (Delivered/Read/Failed status) is built — set `WHATSAPP_VERIFY_TOKEN` + `WHATSAPP_APP_SECRET` in Vercel and subscribe the app to the `messages` field (WHATSAPP.md §4b). Remaining: host images + media template for real X-ray sharing.
 3. **Vercel region → Mumbai (`bom1`)** via `vercel.json` for lower latency to India.
 4. ✅ **Phase-2 clinical depth COMPLETE** (PRD §9): ✅ physio (F-13/F-14); ✅ referral letter (F-08); ✅ reschedule/cancel link (F-03); ✅ imaging order worklist + AERB register (F-09/F-12); ✅ data export / backup (F-26, per-entity CSV + full JSON backup via `/api/export`, owner/admin only); ✅ **HEP builder (F-17)** (library-backed builder → printable / WhatsApp-shareable home exercise program at `/hep/[id]`).
-5. **Real authentication** (replace the demo role-switcher) — e.g. Neon Auth / Better Auth — before storing real patient data.
+5. 🟡 **Real authentication (F-23) — PR-A DONE (auth core).** Email+password via **Auth.js (NextAuth v5) Credentials** + bcrypt against the `Staff` table; **JWT session** carries `staffId`+`role`; `/login` with one-click **demo logins**; middleware session gate; top-bar user + **Log out**. **Next: PR-B** — server-side role enforcement on every route + server action (the real RBAC boundary; PR-A only requires login, it doesn't yet hard-block out-of-role URLs), then **PR-C** — staff account management + owner "View as". Full design in [`F23-REAL-AUTH-PLAN.md`](F23-REAL-AUTH-PLAN.md). **DB `UNIQUE(email)` deferred** (adding it needs `--accept-data-loss`; app-enforced via `findFirst` + distinct seed emails for now). **Deploy needs `AUTH_SECRET` in Vercel.**
 6. **Object storage for X-rays** (Vercel Blob / S3) instead of data URLs.
 7. **Offline-tolerant mode** (a real buying criterion per research).
 8. **Pharmacy module** (only if target clinics run one — validate first).
@@ -256,5 +256,16 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 - Physio hub (`/patients/[id]/physio`) gained a **Home exercise program** card: "Build HEP" + a list of past HEPs (shared badge + Open).
 - Seed: a shared knee-rehab HEP for Deepa (4 exercises). **Seed updated but NOT run** (shared DB) — surfaces on the next reseed.
 - Verified end-to-end on a manual worktree dev server (port 3008): library auto-fill, generate → printable, Share → "Shared" badge, and the HEP listed on the physio hub. Built clean.
+
+**2026-09-28 — Real auth: PR-A (auth core) (F-23)** — first of 3 PRs
+- Built in its own worktree (`.claude/worktrees/real-auth`). Replaces the demo `oc_role` cookie / "Viewing as" switcher with real login. Decisions locked: email+password · Auth.js Credentials reusing `Staff` · single-clinic · admin-set passwords · demo login kept · demo access = **Both** (quick-fill now + owner "View as" in PR-C) · tracking = JOURNAL only.
+- **Auth.js (NextAuth v5) Credentials** (`src/lib/auth.ts`): verifies email+password (`bcryptjs`) against `Staff`, rejects inactive; **JWT session** carries `staffId`+`role` (no DB session table). Route handler `/api/auth/[...nextauth]` (Node runtime).
+- `src/lib/session.ts` now exposes `getCurrentUser` / `requireUser` / `requireRole` (replaces `getCurrentRole`). `layout.tsx` + `/api/export` read the real session; `setRole` + `RoleSwitcher` removed.
+- **`/login`** (`LoginForm`) with a **demo quick-fill** panel — 5 seeded role accounts, gated by `NEXT_PUBLIC_DEMO_MODE` (set `"false"` to hide for a real clinic). Top bar shows the signed-in user + role + **Log out** (`UserMenu`).
+- **Middleware** (`src/middleware.ts`): gates staff routes on session-cookie presence (edge-safe — no bcrypt at the edge); keeps `/appt/*` + `/login` public; real role checks are server-side.
+- Schema: additive `email` / `passwordHash` / `lastLoginAt` on `Staff` (plain `db push`). **DB `UNIQUE(email)` deferred** — the unique constraint trips the `--accept-data-loss` guard (safe here: brand-new all-NULL column, but blocked); uniqueness is app-enforced (`findFirst` + distinct seed emails) until the owner runs `npx prisma db push --accept-data-loss` once. Seed adds ADMIN (Meera Iyer) + PHARMACIST (Vikram Shetty) so all 5 roles have a demo login; all share the seeded demo password.
+- **Verified** on a worktree dev server (port 3009): unauth → `/login`; owner login → full shell (8 nav items + user/role/Log out); logout → `/login`; front-desk login → sidebar correctly restricted to Queue/Patients/Billing/WhatsApp. `npm run build` clean.
+- **Scope note:** PR-A = authentication, NOT the full RBAC boundary — a logged-in user can still reach out-of-role URLs/actions until **PR-B** hard-blocks them. Fine for the demo; gate real patient data on PR-B.
+- **New Vercel env for deploy:** `AUTH_SECRET` (required — `npx auth secret`). Optional `NEXT_PUBLIC_DEMO_MODE=false` for a real clinic.
 
 <!-- Add new dated entries above this line as work continues. -->

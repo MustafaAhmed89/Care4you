@@ -7,9 +7,13 @@
 
 ---
 
-## 0. Decisions needed from you (before build)
+## 0. Decisions
 
-The rest of the plan assumes the **recommended** column. Tell me if you want to change any.
+**✅ Locked 2026-09-28:** all defaults (D1–D5) accepted · demo access = **Both** (one-click demo
+logins in PR-A + owner "View as" switcher in PR-C) · tracking = **JOURNAL only** (no Jira).
+**PR-A is built & verified** (see §8 and JOURNAL); PR-B/PR-C pending.
+
+The table below records the decisions (recommended column = chosen).
 
 | # | Decision | Options | Recommended | Why |
 |---|----------|---------|-------------|-----|
@@ -99,7 +103,7 @@ identical either way — only the login/session plumbing changes.
 ```prisma
 model Staff {
   // ... existing fields ...
-  email        String?  @unique   // login identity (nullable until a staff row is given creds)
+  email        String?            // login identity (DB-level @unique DEFERRED — see note below)
   passwordHash String?            // bcrypt; null = not yet set / invited
   lastLoginAt  DateTime?          // optional, nice for the owner + future audit
 }
@@ -107,6 +111,11 @@ model Staff {
 
 - Additive only → plain `prisma db push` on the shared Neon `production` branch (no reset, no
   data loss). Matches the project's additive-migration rule.
+- **DB-level `UNIQUE(email)` deferred (PR-A):** adding the unique constraint trips the
+  `--accept-data-loss` safety guard (safe here — brand-new all-NULL column — but blocked). PR-A
+  enforces email uniqueness in app code (`findFirst`; seed emails are distinct; PR-C's staff-create
+  will check) and login uses `findFirst`. To add the DB index, the owner runs once (or Claude with
+  approval): `npx prisma db push --accept-data-loss`, then flip `findFirst`→`findUnique` + restore `@unique`.
 - **Seed** (`src/lib/seed.ts`): give the 5 demo staff real emails + a hashed demo password so
   the demo keeps working; keep one obvious `owner@care4you.demo` (D5). Password stored hashed;
   the plaintext demo password goes in `.env.example` / seed comment, **not** in chat or the repo history.
@@ -202,12 +211,13 @@ Roles: **OWN**=owner_doctor · **FD**=front_desk · **PHY**=physio · **PHA**=ph
 
 Three reviewable PRs (each its own worktree + preview URL), smallest-blast-radius first:
 
-**PR-A — Auth core (login works, role read from session)** · ~1.5 d
+**PR-A — Auth core (login works, role read from session)** · ✅ built & verified 2026-09-28
 - Add `email`/`passwordHash`/`lastLoginAt` to `Staff`; `db push`; seed real creds.
 - Install Auth.js + `bcryptjs`; `authorize()` against `Staff`; JWT session.
 - `/login` + logout; `getCurrentUser()`/`requireUser()`; middleware presence-check + public allowlist.
+- **Demo quick-fill** on `/login` (5 seeded role accounts, `NEXT_PUBLIC_DEMO_MODE`) + top-bar user/role/Log out (`UserMenu`, replaces the switcher). — *"Both" decision, demo half*
 - Swap `layout.tsx` + `/api/export` from `getCurrentRole()` to the session.
-- *After PR-A: app requires login; existing sidebar scoping still works.*
+- *Verified: unauth→/login, owner full shell, logout, front-desk restricted sidebar. Build clean.*
 
 **PR-B — Authorization pass (the security boundary)** · ~1.5–2 d
 - `ROLE_RESOURCES` single source of truth; `requireRole()` on every page + every action + `/api/export`.

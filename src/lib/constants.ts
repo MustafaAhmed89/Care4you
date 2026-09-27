@@ -17,6 +17,18 @@ export const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Admin",
 };
 
+// F-23 — demo logins shown as one-click quick-fill on /login (demo mode only).
+// A real clinic sets NEXT_PUBLIC_DEMO_MODE="false" to hide this panel and manages
+// its own staff accounts. All demo accounts share DEMO_PASSWORD (seeded, hashed).
+export const DEMO_PASSWORD = "orthocare";
+export const DEMO_LOGINS: { role: string; label: string; email: string }[] = [
+  { role: "OWNER_DOCTOR", label: "Owner / Doctor", email: "owner@care4you.demo" },
+  { role: "FRONT_DESK", label: "Front Desk", email: "frontdesk@care4you.demo" },
+  { role: "PHYSIO", label: "Physiotherapist", email: "physio@care4you.demo" },
+  { role: "PHARMACIST", label: "Pharmacist", email: "pharmacist@care4you.demo" },
+  { role: "ADMIN", label: "Admin", email: "admin@care4you.demo" },
+];
+
 export const APPT_STATUS = {
   BOOKED: "BOOKED",
   CONFIRMED: "CONFIRMED",
