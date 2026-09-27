@@ -81,6 +81,8 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 | `/appt/[id]` | **Patient-facing** (no login): confirm / reschedule / cancel an appointment — F-03 |
 | `/billing` | Day-end reconciliation (cash/UPI/card) + dues + invoices |
 | `/physio` | Session packages, renewal alerts, log session, sell package |
+| `/patients/[id]/hep` | Build a Home Exercise Program (library-backed) — F-17 |
+| `/hep/[id]` | Printable / WhatsApp-shareable Home Exercise Program — F-17 |
 | `/imaging` | X-ray order worklist + phone-photo capture (exposure) + study log + AERB banner |
 | `/imaging/register` | Printable AERB / radiation exposure register — F-12 |
 | `/messages` | WhatsApp outbox (chat-style previews) + compose |
@@ -94,7 +96,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 - `prisma/schema.prisma` — data model (see PRD §11). `prisma/seed.mjs` — demo clinic + a realistic day.
 - `src/app/actions.ts` — all server actions (mutations).
 - `src/lib/` — `db.ts` (Prisma client), `messaging.ts` (WhatsApp provider), `constants.ts` (enum-like values), `format.ts` (IST formatting), `day.ts` (IST today-range), `session.ts` (cookie role), `export.ts` + `csv.ts` (F-26 data export/backup).
-- `src/components/` — UI primitives + client forms (NewVisitForm, NewInvoiceForm, UploadStudyForm, RegisterWalkInForm, NewAssessmentForm, NewReferralForm, AppointmentActions, NewImagingOrderForm, CaptureStudyForm, RoleSwitcher, Sidebar, TopBar, MobileNav, PrintButton).
+- `src/components/` — UI primitives + client forms (NewVisitForm, NewInvoiceForm, UploadStudyForm, RegisterWalkInForm, NewAssessmentForm, NewReferralForm, AppointmentActions, NewImagingOrderForm, CaptureStudyForm, NewHepForm, RoleSwitcher, Sidebar, TopBar, MobileNav, PrintButton).
 - `src/middleware.ts` — sets an `x-pathname` header so the root layout renders patient-facing `/appt/*` pages **bare** (no staff sidebar / role switcher).
 
 ---
@@ -142,7 +144,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 1. ✅ **DONE — Daily auto-reseed.** `vercel.json` cron (`0 0 * * *` = 05:30 IST) → secret-guarded `/api/reseed` → `seedDemo()` (shared module `src/lib/seed.ts`, IST-correct). **Requires `CRON_SECRET` env var in Vercel** (else the route returns 503 and the cron no-ops). Manual trigger: `curl -H "Authorization: Bearer <CRON_SECRET>" https://care4you.vercel.app/api/reseed`. Hobby plan crons run ~once/day at approximate times — fine here.
 2. 🟡 **Real WhatsApp — code DONE (Meta Cloud API).** `MetaCloudProvider` in `src/lib/messaging.ts` sends approved **template** messages; each message type → template name + ordered params via `buildMessage` (verified: CONFIRM/2H = 5 params, 24H = 4, REPORT/RECALL/DUES = 3). Mock stays the default. **To go live (user):** Meta Business + app, phone-number ID, permanent token, create the 6 Utility templates, set `MESSAGING_PROVIDER=meta` + `WHATSAPP_*` env in Vercel, redeploy — full guide in **`WHATSAPP.md`**. Caveat: seeded demo phone numbers are fake, so real sends to them fail — demo with a real opted-in number. Follow-ups: ✅ webhook route `/api/whatsapp/webhook` (Delivered/Read/Failed status) is built — set `WHATSAPP_VERIFY_TOKEN` + `WHATSAPP_APP_SECRET` in Vercel and subscribe the app to the `messages` field (WHATSAPP.md §4b). Remaining: host images + media template for real X-ray sharing.
 3. **Vercel region → Mumbai (`bom1`)** via `vercel.json` for lower latency to India.
-4. 🟡 **Phase-2 clinical depth** (PRD §9): ✅ **physio (F-13/F-14) DONE**; ✅ **referral letter (F-08) DONE**; ✅ **reschedule/cancel link (F-03) DONE**; ✅ **imaging order worklist + AERB register (F-09/F-12) DONE** (doctor places an order → technician worklist → capture with exposure kVp/mAs + operator; AERB licence/RSO/renewal banner with reminder; printable exposure register at `/imaging/register`); ✅ **data export / backup (F-26) DONE** (per-entity CSV + full JSON backup from Settings via `/api/export`, owner/admin only). Remaining: HEP builder (F-17).
+4. ✅ **Phase-2 clinical depth COMPLETE** (PRD §9): ✅ physio (F-13/F-14); ✅ referral letter (F-08); ✅ reschedule/cancel link (F-03); ✅ imaging order worklist + AERB register (F-09/F-12); ✅ data export / backup (F-26, per-entity CSV + full JSON backup via `/api/export`, owner/admin only); ✅ **HEP builder (F-17)** (library-backed builder → printable / WhatsApp-shareable home exercise program at `/hep/[id]`).
 5. **Real authentication** (replace the demo role-switcher) — e.g. Neon Auth / Better Auth — before storing real patient data.
 6. **Object storage for X-rays** (Vercel Blob / S3) instead of data URLs.
 7. **Offline-tolerant mode** (a real buying criterion per research).
@@ -156,6 +158,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 ## 9. Related docs in this repo
 
 - `OrthoCare-Clinic-MVP-Requirements.md` — the full PRD (personas, 18 pain points, 30 features, data model, regulatory, competitive, pricing, demo script). **Feed this back to extend features.**
+- `DEMO.md` — **living demo use-case catalog** (every demoable use case, click-path, talking point). **Update it in the same PR whenever you build/change a feature** (see CLAUDE.md).
 - `README.md` — app overview + local run.
 - `DEPLOY.md` — Neon + Vercel deploy runbook (mostly done now).
 - `.env.example` — required env vars.
@@ -245,5 +248,13 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 - UI: an **Export & backup** card on `/settings` — a CSV button per entity + "Download full backup (JSON)". The PRD's "your data is always yours, no lock-in" reassurance.
 - Verified end-to-end on a manual worktree dev server (port 3007): CSV headers + quoting (addresses with commas quoted), computed invoice totals, JSON backup, **403 for a PHYSIO cookie**, **400 for a bad entity**, and all settings card links. Built clean.
 - Note: gating is by the **demo role cookie** (switchable via the top-bar) — real auth (F-23) is still needed before this is a true security boundary in production.
+
+**2026-09-27 (cont.) — Home Exercise Program builder (F-17)** — completes Phase-2 clinical depth
+- Built in its own worktree (`.claude/worktrees/hep-builder`). New `HomeExerciseProgram` + `HepExercise` models (additive `prisma db push`; 1:many, no unique constraint).
+- **Builder** at `/patients/[id]/hep` (`NewHepForm`): dynamic exercise rows backed by a starter **exercise library** (`EXERCISE_LIBRARY` in constants) — typing a library name auto-fills instructions/sets/reps/frequency; custom rows allowed. `createHep` action → redirect to the printable.
+- **Printable / shareable HEP** at `/hep/[id]` (same print pattern as Rx/referral): letterhead, patient block, numbered exercises, safety footer. **Share on WhatsApp** (`shareHep`) sets `sharedAt` + sends a REPORT_SHARE message ("your home exercise program … is ready") — reuses the existing messaging path, no new template.
+- Physio hub (`/patients/[id]/physio`) gained a **Home exercise program** card: "Build HEP" + a list of past HEPs (shared badge + Open).
+- Seed: a shared knee-rehab HEP for Deepa (4 exercises). **Seed updated but NOT run** (shared DB) — surfaces on the next reseed.
+- Verified end-to-end on a manual worktree dev server (port 3008): library auto-fill, generate → printable, Share → "Shared" badge, and the HEP listed on the physio hub. Built clean.
 
 <!-- Add new dated entries above this line as work continues. -->
