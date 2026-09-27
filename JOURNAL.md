@@ -171,6 +171,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 **2026-09-27 (cont.) — Daily auto-reseed cron**
 - Extracted the seed into a shared, IST-correct module `src/lib/seed.ts` (`seedDemo(prisma)`); CLI now `tsx prisma/seed.ts` (added `tsx`); removed `prisma/seed.mjs`.
 - Added secret-guarded `GET /api/reseed` (verifies `Bearer $CRON_SECRET`) + `vercel.json` cron (daily 05:30 IST).
-- Verified locally: 401 without auth, `{ok:true, patients:14, appointments:11}` with the token. **Action required:** set `CRON_SECRET` in Vercel env for it to run in production.
+- Verified locally: 401 without auth, `{ok:true, patients:14, appointments:11}` with the token.
+- Set `CRON_SECRET` in Vercel (Production) + redeployed. **Verified in production:** `/api/reseed` returns 401 unauth (protected & active) — cron healthy. Gotcha confirmed: a Vercel env var only reaches deployments created *after* it's saved, so a fresh deploy was required.
 
 <!-- Add new dated entries above this line as work continues. -->
