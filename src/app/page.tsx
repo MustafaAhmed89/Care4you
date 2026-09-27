@@ -72,60 +72,68 @@ export default async function QueuePage() {
             ) : (
               <div className="divide-y divide-slate-100">
                 {rows.map((a) => (
-                  <div key={a.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-sm font-bold text-slate-600">
-                      {a.tokenNo ?? "—"}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <Link href={`/patients/${a.patientId}`} className="text-sm font-medium text-slate-800 hover:text-brand-700">
-                        {a.patient.name}
-                      </Link>
-                      <p className="text-xs text-slate-500">
-                        {ageGender(a.patient.age, a.patient.gender)} · {a.patient.phone}
-                        {a.reason ? <span className="text-slate-400"> · {a.reason}</span> : null}
-                      </p>
-                    </div>
-                    <div className="hidden w-24 text-xs text-slate-500 sm:block">{fmtTime(a.scheduledStart)}</div>
-                    <Badge className="bg-slate-100 text-slate-600">{SERVICE_LABELS[a.serviceType]}</Badge>
-                    <span className="hidden text-[11px] text-slate-400 md:inline">{SOURCE_LABELS[a.source]}</span>
-                    <Badge className={STATUS_BADGE[a.status]}>{STATUS_LABELS[a.status]}</Badge>
-
-                    <div className="flex items-center gap-1.5">
-                      {(a.status === "BOOKED" || a.status === "CONFIRMED") && (
-                        <>
-                          <StatusButton id={a.id} status="CHECKED_IN" label="Check in" />
-                          <form action={sendMessage}>
-                            <input type="hidden" name="patientId" value={a.patientId} />
-                            <input type="hidden" name="appointmentId" value={a.id} />
-                            <input type="hidden" name="type" value="REMINDER_2H" />
-                            <button className="btn-ghost btn-sm" title="Send WhatsApp reminder">
-                              <Bell size={14} /> Remind
-                            </button>
-                          </form>
-                        </>
-                      )}
-                      {a.status === "CHECKED_IN" && (
-                        <>
-                          <StatusButton id={a.id} status="IN_PROGRESS" label="Start" icon="play" />
-                          <StatusButton id={a.id} status="NO_SHOW" label="No-show" icon="ban" ghost />
-                        </>
-                      )}
-                      {a.status === "IN_PROGRESS" && (
-                        <>
-                          <Link
-                            href={`/patients/${a.patientId}/visit?apptId=${a.id}&providerId=${a.providerId}`}
-                            className="btn-primary btn-sm"
-                          >
-                            <FileText size={14} /> New visit
-                          </Link>
-                          <StatusButton id={a.id} status="COMPLETED" label="Done" icon="check" ghost />
-                        </>
-                      )}
-                      {a.status === "COMPLETED" && (
-                        <Link href={`/patients/${a.patientId}`} className="btn-ghost btn-sm">
-                          <Eye size={14} /> View
+                  <div
+                    key={a.id}
+                    className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center"
+                  >
+                    <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-sm font-bold text-slate-600">
+                        {a.tokenNo ?? "—"}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <Link href={`/patients/${a.patientId}`} className="text-sm font-medium text-slate-800 hover:text-brand-700">
+                          {a.patient.name}
                         </Link>
-                      )}
+                        <p className="text-xs text-slate-500">
+                          {ageGender(a.patient.age, a.patient.gender)} · {a.patient.phone}
+                        </p>
+                        {a.reason ? <p className="mt-0.5 text-xs text-slate-400">{a.reason}</p> : null}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 pl-12 sm:gap-3 sm:pl-0">
+                      <div className="hidden w-24 text-xs text-slate-500 sm:block">{fmtTime(a.scheduledStart)}</div>
+                      <Badge className="bg-slate-100 text-slate-600">{SERVICE_LABELS[a.serviceType]}</Badge>
+                      <span className="hidden text-[11px] text-slate-400 md:inline">{SOURCE_LABELS[a.source]}</span>
+                      <Badge className={STATUS_BADGE[a.status]}>{STATUS_LABELS[a.status]}</Badge>
+
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {(a.status === "BOOKED" || a.status === "CONFIRMED") && (
+                          <>
+                            <StatusButton id={a.id} status="CHECKED_IN" label="Check in" />
+                            <form action={sendMessage}>
+                              <input type="hidden" name="patientId" value={a.patientId} />
+                              <input type="hidden" name="appointmentId" value={a.id} />
+                              <input type="hidden" name="type" value="REMINDER_2H" />
+                              <button className="btn-ghost btn-sm" title="Send WhatsApp reminder">
+                                <Bell size={14} /> Remind
+                              </button>
+                            </form>
+                          </>
+                        )}
+                        {a.status === "CHECKED_IN" && (
+                          <>
+                            <StatusButton id={a.id} status="IN_PROGRESS" label="Start" icon="play" />
+                            <StatusButton id={a.id} status="NO_SHOW" label="No-show" icon="ban" ghost />
+                          </>
+                        )}
+                        {a.status === "IN_PROGRESS" && (
+                          <>
+                            <Link
+                              href={`/patients/${a.patientId}/visit?apptId=${a.id}&providerId=${a.providerId}`}
+                              className="btn-primary btn-sm"
+                            >
+                              <FileText size={14} /> New visit
+                            </Link>
+                            <StatusButton id={a.id} status="COMPLETED" label="Done" icon="check" ghost />
+                          </>
+                        )}
+                        {a.status === "COMPLETED" && (
+                          <Link href={`/patients/${a.patientId}`} className="btn-ghost btn-sm">
+                            <Eye size={14} /> View
+                          </Link>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
