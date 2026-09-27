@@ -1,15 +1,17 @@
 import { formatInTimeZone } from "date-fns-tz";
 import { CLINIC_TZ } from "@/lib/day";
-import RoleSwitcher from "./RoleSwitcher";
+import UserMenu from "./UserMenu";
 import MobileNav from "./MobileNav";
 
 export default function TopBar({
   role,
+  userName,
   clinicPhone,
   clinicName,
   logoInitials,
 }: {
   role: string;
+  userName: string;
   clinicPhone: string;
   clinicName: string;
   logoInitials: string;
@@ -24,7 +26,7 @@ export default function TopBar({
           {clinicPhone && <p className="truncate text-xs text-slate-400">{clinicPhone}</p>}
         </div>
       </div>
-      <RoleSwitcher role={role} />
+      <UserMenu name={userName} role={role} />
     </header>
   );
 }

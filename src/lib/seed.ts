@@ -1,5 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
+import bcrypt from "bcryptjs";
+import { DEMO_PASSWORD } from "./constants";
 
 // Shared demo seed. Used by the CLI (prisma/seed.ts) and the /api/reseed cron.
 // Times are anchored to the clinic's timezone (IST) so the seeded "today" matches
@@ -62,12 +64,18 @@ export async function seedDemo(prisma: PrismaClient) {
     },
   });
 
+  // F-23: all demo staff share one demo password (hashed). One account per role so the
+  // /login quick-fill can demonstrate role-based access. Real clinics set
+  // NEXT_PUBLIC_DEMO_MODE="false" and manage their own accounts.
+  const demoHash = await bcrypt.hash(DEMO_PASSWORD, 10);
   const drGaurav = await prisma.staff.create({
-    data: { name: "Dr. Gaurav Sharma", role: "OWNER_DOCTOR", nmcRegNo: "KMC/2009/45678", isProvider: true, phone: "+91 98450 11223" },
+    data: { name: "Dr. Gaurav Sharma", role: "OWNER_DOCTOR", nmcRegNo: "KMC/2009/45678", isProvider: true, phone: "+91 98450 11223", email: "owner@care4you.demo", passwordHash: demoHash },
   });
-  const priya = await prisma.staff.create({ data: { name: "Priya Nair", role: "PHYSIO", isProvider: true, phone: "+91 98860 22334" } });
-  const anjali = await prisma.staff.create({ data: { name: "Anjali Rao", role: "PHYSIO", isProvider: true, phone: "+91 99010 33445" } });
-  const bharathi = await prisma.staff.create({ data: { name: "Bharathi K", role: "FRONT_DESK", phone: "+91 98455 44556" } });
+  const priya = await prisma.staff.create({ data: { name: "Priya Nair", role: "PHYSIO", isProvider: true, phone: "+91 98860 22334", email: "physio@care4you.demo", passwordHash: demoHash } });
+  const anjali = await prisma.staff.create({ data: { name: "Anjali Rao", role: "PHYSIO", isProvider: true, phone: "+91 99010 33445", email: "anjali@care4you.demo", passwordHash: demoHash } });
+  const bharathi = await prisma.staff.create({ data: { name: "Bharathi K", role: "FRONT_DESK", phone: "+91 98455 44556", email: "frontdesk@care4you.demo", passwordHash: demoHash } });
+  await prisma.staff.create({ data: { name: "Meera Iyer", role: "ADMIN", phone: "+91 98453 55667", email: "admin@care4you.demo", passwordHash: demoHash } });
+  await prisma.staff.create({ data: { name: "Vikram Shetty", role: "PHARMACIST", phone: "+91 98456 66778", email: "pharmacist@care4you.demo", passwordHash: demoHash } });
 
   const P: Record<string, any> = {};
   const patients: [string, string, string, string, number, string][] = [

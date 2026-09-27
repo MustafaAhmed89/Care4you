@@ -3,10 +3,8 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import { formatInTimeZone } from "date-fns-tz";
 import { CLINIC_TZ } from "@/lib/day";
-import { ROLE_COOKIE_NAME } from "@/lib/session";
 import { buildMessage, getProvider, type MessageType } from "@/lib/messaging";
 
 function todayRange() {
@@ -27,12 +25,8 @@ function appBaseUrl(): string {
   return (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "https://care4you.vercel.app").replace(/\/+$/, "");
 }
 
-// ---- role switch (demo auth) ----
-export async function setRole(formData: FormData) {
-  const role = String(formData.get("role") || "OWNER_DOCTOR");
-  cookies().set(ROLE_COOKIE_NAME, role, { path: "/", maxAge: 60 * 60 * 24 * 30 });
-  revalidatePath("/", "layout");
-}
+// (F-23) The demo role switcher (setRole) was removed — roles now come from the
+// authenticated session. See src/lib/auth.ts and src/lib/session.ts.
 
 // ---- queue ----
 export async function registerWalkIn(formData: FormData) {

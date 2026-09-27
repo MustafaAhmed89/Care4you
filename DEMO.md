@@ -3,7 +3,7 @@
 > **Living document.** Every demoable use case, the exact click-path, and the sales talking point.
 > **Keep this current:** whenever a feature is built or changed, add/refresh its use case here (same discipline as `JOURNAL.md`). See [§ Maintaining this doc](#maintaining-this-doc).
 >
-> **Status:** DRAFT · **Maintainer:** Mustafa Ahmed · **Last updated:** 2026-09-27
+> **Status:** DRAFT · **Maintainer:** Mustafa Ahmed · **Last updated:** 2026-09-28
 
 ---
 
@@ -11,7 +11,7 @@
 
 - **Live URL:** https://care4you.vercel.app/ — demo on the device the clinic owns (their phone/laptop).
 - **Data is seeded and refreshed daily** (05:30 IST auto-reseed), so "today" always has a live queue. Refresh manually with `npm run reset` if needed.
-- **Role switcher** (top-right "Viewing as…") flips between Owner/Doctor, Front Desk, Physiotherapist, Pharmacist, Admin — use it to show the right person's view.
+- **Sign in per role:** the app now requires a login (F-23). On `/login`, click a **demo login** chip (Owner/Doctor, Front Desk, Physiotherapist, Pharmacist, Admin) to fill credentials, then **Sign in** — switch roles by logging out and back in (an owner "View as" quick-switch is coming in PR-C). Use this to show each person's view.
 - **Pre-empt the two fears early:** *"your data is always yours"* (Use case 15) and *"it works when the internet drops"* (roadmap) — the two objections that kill small-clinic deals.
 
 ### Star demo data (who to open)
@@ -113,10 +113,10 @@ Each use case: **Scenario** (who/why) · **Demo path** (what to click) · **Talk
 - **Demo path:** `Settings` → **Export & backup** → a CSV per record type + **Download full backup (JSON)** (owner/admin only).
 - **Talking point:** *"Your data is always yours — one click for a spreadsheet or a full backup. No lock-in, no data-loss fear."*
 
-### 16. Compliance config + role-based views · settings / demo RBAC
-- **Scenario:** Set up clinic identity/compliance and show role-appropriate access.
-- **Demo path:** `Settings` (clinic identity, GST, AERB, NMC/KPME, pharmacy toggle) · top-right **role switcher** → note the sidebar changes per role.
-- **Talking point:** *"Compliant by construction — GST, AERB, NMC handled quietly. Front desk, doctor and physio each see only what they need."*
+### 16. Compliance config + secure role-based login · settings / F-23
+- **Scenario:** Set up clinic identity/compliance, and show that every staff role signs in and sees only what they need.
+- **Demo path:** `Settings` (clinic identity, GST, AERB, NMC/KPME, pharmacy toggle) · **Log out** → on `/login` use the one-click **demo logins** to sign in as *Owner* vs *Front Desk* → note the sidebar changes per role.
+- **Talking point:** *"Compliant by construction — GST, AERB, NMC handled quietly. And everyone logs in: front desk, doctor and physio each see only what they need — the basis for DPDP access control."*
 
 ---
 
@@ -139,9 +139,11 @@ Each use case: **Scenario** (who/why) · **Demo path** (what to click) · **Talk
 | WhatsApp outbox (F-21) | 13 | ✅ Live (mock provider; real Meta wired, off by default) |
 | Owner dashboard (F-22) | 14 | ✅ Live |
 | Data export/backup (F-26) | 15 | ✅ Live |
-| Settings + RBAC | 16 | ✅ Live (demo role cookie; real auth pending) |
+| Compliance config + role-based login (F-23) | 16 | ✅ Live — real login shipped (PR-A: email+password + one-click demo logins); server-side URL/action enforcement lands in PR-B |
 
-**Not yet built (don't demo):** real authentication (F-23), DPDP consent/audit (F-24), pharmacy module (F-29/30), offline mode, object storage for images.
+**Partially built:** real authentication (F-23) — **PR-A live** (login + role-scoped menus); full server-side RBAC enforcement is **PR-B**.
+
+**Not yet built (don't demo):** DPDP consent/audit (F-24), pharmacy module (F-29/30), offline mode, object storage for images.
 
 ---
 

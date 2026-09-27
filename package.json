@@ -16,15 +16,18 @@
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
+    "bcryptjs": "^3.0.3",
     "date-fns": "3.6.0",
     "date-fns-tz": "^3.2.0",
     "lucide-react": "0.454.0",
     "next": "14.2.15",
+    "next-auth": "^5.0.0-beta.32",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
   "devDependencies": {
     "@neon/config": "^1.8.2",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "20.16.11",
     "@types/react": "18.3.11",
     "@types/react-dom": "18.3.0",

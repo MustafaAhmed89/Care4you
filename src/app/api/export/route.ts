@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentRole } from "@/lib/session";
+import { getCurrentUser } from "@/lib/session";
 import { CSV_ENTITIES, getFullBackup } from "@/lib/export";
 import { toCsv } from "@/lib/csv";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// F-26 — one-click data export / backup. Restricted to owner/admin (demo RBAC).
+// F-26 — one-click data export / backup. Restricted to owner/admin (F-23 real auth).
 export async function GET(req: NextRequest) {
-  const role = getCurrentRole();
-  if (role !== "OWNER_DOCTOR" && role !== "ADMIN") {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  }
+  if (user.role !== "OWNER_DOCTOR" && user.role !== "ADMIN") {
     return NextResponse.json({ error: "Data export is restricted to the clinic owner/admin." }, { status: 403 });
   }
 
