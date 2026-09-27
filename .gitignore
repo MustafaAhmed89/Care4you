@@ -21,3 +21,7 @@ public/uploads/*
 # Neon agent tooling (regenerable via `neon skills` / `neon mcp`)
 .claude/skills/
 skills-lock.json
+
+# Per-session worktrees (isolated checkouts) + local-only Claude settings
+.claude/worktrees/
+.claude/settings.local.json
