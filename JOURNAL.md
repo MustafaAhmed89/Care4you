@@ -21,7 +21,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 
 **Before any git push:** `.env` is gitignored (holds real Neon credentials). Never commit it.
 
-**⚠️ Read the caveat that will bite first:** the demo data is anchored to the day it was seeded, and "today" views (queue / day-end / reports) only show the **current IST day**. On a later day they go **empty** until you `npm run reset`. See §7 and the backlog item "daily auto-reseed."
+**Demo freshness:** "today" views only show the **current IST day**. This is now **auto-handled by a daily reseed cron** (`/api/reseed` + `vercel.json`) — but it **requires the `CRON_SECRET` env var set in Vercel** (see §8 item 1). You can also refresh manually anytime with `npm run reset`.
 
 **Top of the backlog (see §8):** (1) daily auto-reseed cron so the demo never goes stale, (2) real WhatsApp BSP, (3) Phase-2 clinical depth, (4) real auth before real patient data.
 
@@ -119,7 +119,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 ## 7. Known limitations (intentional demo scope)
 
 - **WhatsApp is simulated** until a BSP is connected (`MESSAGING_PROVIDER=bsp` + implement `BspProvider.send()`).
-- **Demo data staleness:** data is anchored to the seed day; "today" views only populate for the current IST day → empty on later days until `npm run reset`. (Backlog: daily auto-reseed.)
+- **Demo data freshness:** handled by the daily auto-reseed cron (§8 item 1) once `CRON_SECRET` is set in Vercel; otherwise "today" views go empty on later days until `npm run reset`.
 - **Role access** filters the sidebar but does **not** hard-block direct URLs — needs real auth before real patient data.
 - **Pharmacy** (Schedule H/H1, inventory) not built.
 - **No offline mode** yet (design tolerates a later add).
@@ -129,7 +129,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 
 ## 8. Backlog / next steps (roughly prioritized)
 
-1. **Daily auto-reseed** — Vercel Cron → secret-guarded `/api/reseed` route running the seed, so the demo is always "live" without manual `npm run reset`. (Fixes §7 staleness.)
+1. ✅ **DONE — Daily auto-reseed.** `vercel.json` cron (`0 0 * * *` = 05:30 IST) → secret-guarded `/api/reseed` → `seedDemo()` (shared module `src/lib/seed.ts`, IST-correct). **Requires `CRON_SECRET` env var in Vercel** (else the route returns 503 and the cron no-ops). Manual trigger: `curl -H "Authorization: Bearer <CRON_SECRET>" https://care4you.vercel.app/api/reseed`. Hobby plan crons run ~once/day at approximate times — fine here.
 2. **Real WhatsApp** — pick an India BSP, verify a number, get 3–4 utility templates approved, implement `BspProvider.send()`, set `MESSAGING_PROVIDER=bsp`. (PRD §14.)
 3. **Vercel region → Mumbai (`bom1`)** via `vercel.json` for lower latency to India.
 4. **Phase-2 clinical depth** (PRD §9): physio assessment scores (pain/ROM/LEFS) + progress charts, imaging order worklist + AERB register, ortho first-vs-follow-up note templates, referral letters, HEP builder.
@@ -167,5 +167,10 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 - Pushed to GitHub `MustafaAhmed89/Care4you`; Mustafa imported to Vercel (`care4you`).
 - **Diagnosed & fixed the UTC-vs-IST timezone bug** (empty today-views on Vercel); pushed → auto-redeployed.
 - **Verified live:** https://care4you.vercel.app/ queue + billing working end-to-end with correct IST date and Neon data.
+
+**2026-09-27 (cont.) — Daily auto-reseed cron**
+- Extracted the seed into a shared, IST-correct module `src/lib/seed.ts` (`seedDemo(prisma)`); CLI now `tsx prisma/seed.ts` (added `tsx`); removed `prisma/seed.mjs`.
+- Added secret-guarded `GET /api/reseed` (verifies `Bearer $CRON_SECRET`) + `vercel.json` cron (daily 05:30 IST).
+- Verified locally: 401 without auth, `{ok:true, patients:14, appointments:11}` with the token. **Action required:** set `CRON_SECRET` in Vercel env for it to run in production.
 
 <!-- Add new dated entries above this line as work continues. -->
