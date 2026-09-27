@@ -143,7 +143,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 
 1. ✅ **DONE — Daily auto-reseed.** `vercel.json` cron (`0 0 * * *` = 05:30 IST) → secret-guarded `/api/reseed` → `seedDemo()` (shared module `src/lib/seed.ts`, IST-correct). **Requires `CRON_SECRET` env var in Vercel** (else the route returns 503 and the cron no-ops). Manual trigger: `curl -H "Authorization: Bearer <CRON_SECRET>" https://care4you.vercel.app/api/reseed`. Hobby plan crons run ~once/day at approximate times — fine here.
 2. 🟡 **Real WhatsApp — code DONE (Meta Cloud API).** `MetaCloudProvider` in `src/lib/messaging.ts` sends approved **template** messages; each message type → template name + ordered params via `buildMessage` (verified: CONFIRM/2H = 5 params, 24H = 4, REPORT/RECALL/DUES = 3). Mock stays the default. **To go live (user):** Meta Business + app, phone-number ID, permanent token, create the 6 Utility templates, set `MESSAGING_PROVIDER=meta` + `WHATSAPP_*` env in Vercel, redeploy — full guide in **`WHATSAPP.md`**. Caveat: seeded demo phone numbers are fake, so real sends to them fail — demo with a real opted-in number. Follow-ups: ✅ webhook route `/api/whatsapp/webhook` (Delivered/Read/Failed status) is built — set `WHATSAPP_VERIFY_TOKEN` + `WHATSAPP_APP_SECRET` in Vercel and subscribe the app to the `messages` field (WHATSAPP.md §4b). Remaining: host images + media template for real X-ray sharing.
-3. **Vercel region → Mumbai (`bom1`)** via `vercel.json` for lower latency to India.
+3. ✅ **DONE — Vercel region → Mumbai (`bom1`).** `"regions": ["bom1"]` in `vercel.json` runs serverless functions in Mumbai for lower latency to India users (takes effect on the next deploy). If the plan rejects a fixed region, remove the key.
 4. ✅ **Phase-2 clinical depth COMPLETE** (PRD §9): ✅ physio (F-13/F-14); ✅ referral letter (F-08); ✅ reschedule/cancel link (F-03); ✅ imaging order worklist + AERB register (F-09/F-12); ✅ data export / backup (F-26, per-entity CSV + full JSON backup via `/api/export`, owner/admin only); ✅ **HEP builder (F-17)** (library-backed builder → printable / WhatsApp-shareable home exercise program at `/hep/[id]`).
 5. **Real authentication** (replace the demo role-switcher) — e.g. Neon Auth / Better Auth — before storing real patient data.
 6. **Object storage for X-rays** (Vercel Blob / S3) instead of data URLs.
@@ -256,5 +256,8 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 - Physio hub (`/patients/[id]/physio`) gained a **Home exercise program** card: "Build HEP" + a list of past HEPs (shared badge + Open).
 - Seed: a shared knee-rehab HEP for Deepa (4 exercises). **Seed updated but NOT run** (shared DB) — surfaces on the next reseed.
 - Verified end-to-end on a manual worktree dev server (port 3008): library auto-fill, generate → printable, Share → "Shared" badge, and the HEP listed on the physio hub. Built clean.
+
+**2026-09-27 (cont.) — Vercel region → Mumbai (bom1)**
+- Added `"regions": ["bom1"]` to `vercel.json` so serverless functions run in Mumbai (lower latency for India users). Config-only; takes effect on the next production deploy. (Backlog item 3.) Built in a worktree, no build/reset needed.
 
 <!-- Add new dated entries above this line as work continues. -->
