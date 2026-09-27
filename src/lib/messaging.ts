@@ -1,14 +1,19 @@
 // ---------------------------------------------------------------------------
 // Messaging layer (WhatsApp-first, SMS fallback).
 //
-// DEMO MODE: The default provider is `MockProvider`, which does NOT call any
-// external API. It simulates delivery so the demo can show the exact message
-// that WOULD land on the patient's phone, with a delivery status.
-//
-// GOING LIVE (see requirements doc §14): implement `BspProvider.send()` against
-// your chosen India BSP (AiSensy / Interakt / Wati / Gupshup). Reminders must be
-// pre-approved UTILITY templates; capture opt-in at registration; respect the
-// 24-hour session window. Then set MESSAGING_PROVIDER=bsp in the environment.
+// Providers:
+//  - MockProvider  (default): no external calls; simulates delivery so the demo
+//    shows the exact message that WOULD land, with a status.
+//  - MetaCloudProvider: real WhatsApp Business Cloud API (graph.facebook.com).
+//    Business-initiated messages MUST be pre-approved TEMPLATE messages, so each
+//    MessageType maps to a template name + ordered body parameters. Create matching
+//    templates in Meta Business Manager (see WHATSAPP.md), then set:
+//      MESSAGING_PROVIDER=meta
+//      WHATSAPP_PHONE_NUMBER_ID=...
+//      WHATSAPP_TOKEN=...            (permanent access token)
+//      WHATSAPP_API_VERSION=v21.0   (optional)
+//      WHATSAPP_TEMPLATE_LANG=en    (optional; must match your templates)
+//      WA_TPL_CONFIRM=... etc.      (optional name overrides)
 // ---------------------------------------------------------------------------
 
 export type MessageType =
@@ -24,12 +29,12 @@ export interface TemplateContext {
   clinicName: string;
   clinicPhone?: string | null;
   doctorName?: string | null;
-  whenText?: string; // e.g. "Tomorrow, 27 Sep at 6:30 PM"
+  whenText?: string;
   tokenNo?: number | null;
-  detail?: string; // report name, amount text, etc.
+  detail?: string;
 }
 
-// Utility-category template bodies (kept short & plain, WhatsApp-friendly).
+// Human-readable body — used for the outbox log, the in-app preview, and mock sends.
 export function buildBody(type: MessageType, c: TemplateContext): string {
   const clinic = c.clinicName;
   const dr = c.doctorName ? ` with ${c.doctorName}` : "";
@@ -45,17 +50,62 @@ export function buildBody(type: MessageType, c: TemplateContext): string {
         c.tokenNo ? ` Your token is ${c.tokenNo}.` : ""
       } — ${clinic}`;
     case "REPORT_SHARE":
-      return `Hello ${c.patientName}, your ${c.detail || "report"} from ${clinic} is ready and attached. Keep it for your records. — ${clinic}`;
+      return `Hello ${c.patientName}, your ${c.detail || "report"} from ${clinic} is ready. Keep it for your records. — ${clinic}`;
     case "RECALL":
-      return `Hi ${c.patientName}, it's time for your follow-up${dr} at ${clinic}. ${
-        c.detail || ""
-      } Reply to book a slot. — ${clinic}`;
+      return `Hi ${c.patientName}, it's time for your follow-up${dr} at ${clinic}. ${c.detail || ""} Reply to book a slot. — ${clinic}`;
     case "DUES":
       return `Hello ${c.patientName}, a gentle reminder of an outstanding balance of ${
         c.detail || ""
       } at ${clinic}. You can pay by UPI at the clinic. Thank you. — ${clinic}`;
     default:
       return `Message from ${clinic}.`;
+  }
+}
+
+export interface OutboundMessage {
+  type: MessageType;
+  body: string;
+  template: { name: string; language: string; params: string[] };
+}
+
+// Meta rejects empty template params — coalesce to a safe placeholder.
+function ne(v: unknown, fallback = "-"): string {
+  const s = (v ?? "").toString().trim();
+  return s || fallback;
+}
+function tpl(envKey: string, def: string): string {
+  return process.env[envKey] || def;
+}
+
+// Maps a message type to its WhatsApp template + ordered body params.
+// IMPORTANT: the param order below MUST match the {{1}},{{2}},… in your Meta template.
+export function buildMessage(type: MessageType, c: TemplateContext): OutboundMessage {
+  const body = buildBody(type, c);
+  const lang = process.env.WHATSAPP_TEMPLATE_LANG || "en";
+  const name = ne(c.patientName, "there");
+  const dr = ne(c.doctorName, "our doctor");
+  const clinic = ne(c.clinicName, "the clinic");
+  const when = ne(c.whenText, "your scheduled time");
+  const token = ne(c.tokenNo, "-");
+  const detail = ne(c.detail, "-");
+
+  const t = (n: string, language: string, params: string[]): OutboundMessage => ({ type, body, template: { name: n, language, params } });
+
+  switch (type) {
+    case "CONFIRM":
+      return t(tpl("WA_TPL_CONFIRM", "appt_confirmation"), lang, [name, dr, clinic, when, token]);
+    case "REMINDER_24H":
+      return t(tpl("WA_TPL_REMINDER_24H", "appt_reminder_24h"), lang, [name, dr, clinic, when]);
+    case "REMINDER_2H":
+      return t(tpl("WA_TPL_REMINDER_2H", "appt_reminder_2h"), lang, [name, dr, clinic, when, token]);
+    case "REPORT_SHARE":
+      return t(tpl("WA_TPL_REPORT_SHARE", "report_ready"), lang, [name, detail, clinic]);
+    case "RECALL":
+      return t(tpl("WA_TPL_RECALL", "followup_recall"), lang, [name, dr, clinic]);
+    case "DUES":
+      return t(tpl("WA_TPL_DUES", "payment_reminder"), lang, [name, detail, clinic]);
+    default:
+      return t("appt_confirmation", lang, [name, dr, clinic, when, token]);
   }
 }
 
@@ -68,30 +118,70 @@ export interface SendResult {
 
 export interface MessageProvider {
   name: string;
-  send(to: string, body: string, optedIn: boolean): Promise<SendResult>;
+  send(to: string, msg: OutboundMessage, optedIn: boolean): Promise<SendResult>;
 }
 
-// Default demo provider — simulates a successful WhatsApp delivery.
+// Strip to E.164 digits (no "+"/spaces). Assumes the stored number includes the country code.
+export function normalizePhone(raw: string): string {
+  return (raw || "").replace(/\D/g, "");
+}
+
 class MockProvider implements MessageProvider {
   name = "mock-whatsapp";
-  async send(to: string, _body: string, optedIn: boolean): Promise<SendResult> {
+  async send(to: string, _msg: OutboundMessage, optedIn: boolean): Promise<SendResult> {
     if (!to) return { ok: false, status: "FAILED", error: "No phone number" };
     if (!optedIn) return { ok: false, status: "FAILED", error: "Patient has not opted in to WhatsApp" };
-    // Simulate a delivered utility template.
     return { ok: true, status: "DELIVERED", providerId: "mock_" + Math.random().toString(36).slice(2, 10) };
   }
 }
 
-// Scaffold for the real integration. Fill in when going live.
-class BspProvider implements MessageProvider {
-  name = "bsp-whatsapp";
-  async send(_to: string, _body: string, _optedIn: boolean): Promise<SendResult> {
-    // TODO: POST to your BSP's messages endpoint with an approved utility template.
-    // return mapped provider response here.
-    throw new Error("BspProvider not configured. Set up a BSP and implement send().");
+class MetaCloudProvider implements MessageProvider {
+  name = "meta-cloud";
+  async send(to: string, msg: OutboundMessage, optedIn: boolean): Promise<SendResult> {
+    if (!optedIn) return { ok: false, status: "FAILED", error: "Patient has not opted in to WhatsApp" };
+    const token = process.env.WHATSAPP_TOKEN;
+    const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    const version = process.env.WHATSAPP_API_VERSION || "v21.0";
+    if (!token || !phoneId) {
+      return { ok: false, status: "FAILED", error: "WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID not configured" };
+    }
+    const num = normalizePhone(to);
+    if (!num) return { ok: false, status: "FAILED", error: "Invalid phone number" };
+
+    const payload = {
+      messaging_product: "whatsapp",
+      to: num,
+      type: "template",
+      template: {
+        name: msg.template.name,
+        language: { code: msg.template.language },
+        components: [
+          {
+            type: "body",
+            parameters: msg.template.params.map((text) => ({ type: "text", text })),
+          },
+        ],
+      },
+    };
+
+    try {
+      const res = await fetch(`https://graph.facebook.com/${version}/${phoneId}/messages`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data: any = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, status: "FAILED", error: data?.error?.message || `HTTP ${res.status}` };
+      }
+      // Delivery/read status arrive later via webhooks (not implemented) — mark as SENT.
+      return { ok: true, status: "SENT", providerId: data?.messages?.[0]?.id };
+    } catch (e: any) {
+      return { ok: false, status: "FAILED", error: String(e?.message ?? e) };
+    }
   }
 }
 
 export function getProvider(): MessageProvider {
-  return process.env.MESSAGING_PROVIDER === "bsp" ? new BspProvider() : new MockProvider();
+  return process.env.MESSAGING_PROVIDER === "meta" ? new MetaCloudProvider() : new MockProvider();
 }

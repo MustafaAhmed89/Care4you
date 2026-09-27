@@ -130,7 +130,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 ## 8. Backlog / next steps (roughly prioritized)
 
 1. ✅ **DONE — Daily auto-reseed.** `vercel.json` cron (`0 0 * * *` = 05:30 IST) → secret-guarded `/api/reseed` → `seedDemo()` (shared module `src/lib/seed.ts`, IST-correct). **Requires `CRON_SECRET` env var in Vercel** (else the route returns 503 and the cron no-ops). Manual trigger: `curl -H "Authorization: Bearer <CRON_SECRET>" https://care4you.vercel.app/api/reseed`. Hobby plan crons run ~once/day at approximate times — fine here.
-2. **Real WhatsApp** — pick an India BSP, verify a number, get 3–4 utility templates approved, implement `BspProvider.send()`, set `MESSAGING_PROVIDER=bsp`. (PRD §14.)
+2. 🟡 **Real WhatsApp — code DONE (Meta Cloud API).** `MetaCloudProvider` in `src/lib/messaging.ts` sends approved **template** messages; each message type → template name + ordered params via `buildMessage` (verified: CONFIRM/2H = 5 params, 24H = 4, REPORT/RECALL/DUES = 3). Mock stays the default. **To go live (user):** Meta Business + app, phone-number ID, permanent token, create the 6 Utility templates, set `MESSAGING_PROVIDER=meta` + `WHATSAPP_*` env in Vercel, redeploy — full guide in **`WHATSAPP.md`**. Caveat: seeded demo phone numbers are fake, so real sends to them fail — demo with a real opted-in number. Follow-ups: webhook route (`/api/whatsapp/webhook`) for Delivered/Read status; host images + media template for real X-ray sharing.
 3. **Vercel region → Mumbai (`bom1`)** via `vercel.json` for lower latency to India.
 4. **Phase-2 clinical depth** (PRD §9): physio assessment scores (pain/ROM/LEFS) + progress charts, imaging order worklist + AERB register, ortho first-vs-follow-up note templates, referral letters, HEP builder.
 5. **Real authentication** (replace the demo role-switcher) — e.g. Neon Auth / Better Auth — before storing real patient data.
@@ -173,5 +173,11 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 - Added secret-guarded `GET /api/reseed` (verifies `Bearer $CRON_SECRET`) + `vercel.json` cron (daily 05:30 IST).
 - Verified locally: 401 without auth, `{ok:true, patients:14, appointments:11}` with the token.
 - Set `CRON_SECRET` in Vercel (Production) + redeployed. **Verified in production:** `/api/reseed` returns 401 unauth (protected & active) — cron healthy. Gotcha confirmed: a Vercel env var only reaches deployments created *after* it's saved, so a fresh deploy was required.
+
+**2026-09-27 (cont.) — Real WhatsApp (Meta Cloud API) integration**
+- Reworked `src/lib/messaging.ts`: `buildMessage()` maps each type → WhatsApp template + ordered params; added `MetaCloudProvider` (POST graph.facebook.com/{PHONE_NUMBER_ID}/messages) + `normalizePhone`; mock remains default.
+- Wired `actions.ts` send path to templates; message time now formatted in IST.
+- Added `WHATSAPP.md` (Meta setup + the 6 templates to create + env vars + limits) and `.env.example` WhatsApp block.
+- Verified template param mapping + build. NOT yet live — needs user's Meta account/templates/token + `MESSAGING_PROVIDER=meta` in Vercel.
 
 <!-- Add new dated entries above this line as work continues. -->

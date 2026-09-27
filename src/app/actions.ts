@@ -4,9 +4,10 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+import { CLINIC_TZ } from "@/lib/day";
 import { ROLE_COOKIE_NAME } from "@/lib/session";
-import { buildBody, getProvider, type MessageType } from "@/lib/messaging";
+import { buildMessage, getProvider, type MessageType } from "@/lib/messaging";
 
 function todayRange() {
   const start = new Date();
@@ -288,8 +289,8 @@ async function sendMessageInternal(patientId: string, type: MessageType, appoint
   ]);
   if (!patient || !clinic) return;
 
-  const whenText = appt ? format(new Date(appt.scheduledStart), "d MMM 'at' h:mm a") : "";
-  const body = buildBody(type, {
+  const whenText = appt ? formatInTimeZone(new Date(appt.scheduledStart), CLINIC_TZ, "d MMM 'at' h:mm a") : "";
+  const msg = buildMessage(type, {
     patientName: patient.name,
     clinicName: clinic.name,
     clinicPhone: clinic.phone,
@@ -300,7 +301,7 @@ async function sendMessageInternal(patientId: string, type: MessageType, appoint
   });
 
   const provider = getProvider();
-  const result = await provider.send(patient.phone, body, patient.whatsappOptIn);
+  const result = await provider.send(patient.phone, msg, patient.whatsappOptIn);
 
   await prisma.message.create({
     data: {
@@ -308,7 +309,7 @@ async function sendMessageInternal(patientId: string, type: MessageType, appoint
       appointmentId: appointmentId || undefined,
       channel: "WHATSAPP",
       type,
-      body,
+      body: msg.body,
       status: result.status,
       sentAt: result.ok ? new Date() : null,
     },
