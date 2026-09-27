@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Bell } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { requireResource } from "@/lib/session";
 import { recordPhysioSession, createPhysioPackage, sendMessage } from "@/app/actions";
 import { PageHeader, Card, CardHeader, Badge, StatCard, EmptyState } from "@/components/ui";
 import { inr, fmtDate } from "@/lib/format";
@@ -9,6 +10,7 @@ import { todayRange } from "@/lib/day";
 export const dynamic = "force-dynamic";
 
 export default async function PhysioPage() {
+  await requireResource("physio");
   const { start, end } = todayRange();
   const [packages, physios, patients, sessionsToday] = await Promise.all([
     prisma.physioPackage.findMany({ include: { patient: true }, orderBy: { purchaseDate: "desc" } }),

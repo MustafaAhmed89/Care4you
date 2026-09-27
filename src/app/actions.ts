@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { formatInTimeZone } from "date-fns-tz";
 import { CLINIC_TZ } from "@/lib/day";
 import { buildMessage, getProvider, type MessageType } from "@/lib/messaging";
+import { requireRole } from "@/lib/session";
+import { ACTION_ROLES } from "@/lib/constants";
 
 function todayRange() {
   const start = new Date();
@@ -30,6 +32,7 @@ function appBaseUrl(): string {
 
 // ---- queue ----
 export async function registerWalkIn(formData: FormData) {
+  await requireRole(...ACTION_ROLES.registerWalkIn);
   const name = String(formData.get("name") || "").trim();
   const phone = String(formData.get("phone") || "").trim();
   const providerId = String(formData.get("providerId") || "");
@@ -67,6 +70,7 @@ export async function registerWalkIn(formData: FormData) {
 }
 
 export async function updateApptStatus(formData: FormData) {
+  await requireRole(...ACTION_ROLES.updateApptStatus);
   const id = String(formData.get("id"));
   const status = String(formData.get("status"));
   if (!id || !status) return;
@@ -76,6 +80,7 @@ export async function updateApptStatus(formData: FormData) {
 
 // ---- visit + prescription ----
 export async function createVisit(formData: FormData) {
+  await requireRole(...ACTION_ROLES.createVisit);
   const patientId = String(formData.get("patientId"));
   const providerId = String(formData.get("providerId"));
   const appointmentId = String(formData.get("appointmentId") || "") || null;
@@ -136,6 +141,7 @@ export async function createVisit(formData: FormData) {
 
 // ---- billing ----
 export async function createInvoice(formData: FormData) {
+  await requireRole(...ACTION_ROLES.createInvoice);
   const patientId = String(formData.get("patientId"));
   const visitId = String(formData.get("visitId") || "") || null;
   let lines: any[] = [];
@@ -184,6 +190,7 @@ export async function createInvoice(formData: FormData) {
 }
 
 export async function addPayment(formData: FormData) {
+  await requireRole(...ACTION_ROLES.addPayment);
   const invoiceId = String(formData.get("invoiceId"));
   const amount = parseInt(String(formData.get("amount") || "0"), 10) || 0;
   const mode = String(formData.get("mode") || "CASH");
@@ -202,6 +209,7 @@ export async function addPayment(formData: FormData) {
 
 // ---- physio ----
 export async function recordPhysioSession(formData: FormData) {
+  await requireRole(...ACTION_ROLES.recordPhysioSession);
   const packageId = String(formData.get("packageId"));
   const therapistId = String(formData.get("therapistId") || "") || null;
   const painScore = parseInt(String(formData.get("painScore") || ""), 10);
@@ -229,6 +237,7 @@ export async function recordPhysioSession(formData: FormData) {
 }
 
 export async function createPhysioPackage(formData: FormData) {
+  await requireRole(...ACTION_ROLES.createPhysioPackage);
   const patientId = String(formData.get("patientId"));
   const name = String(formData.get("name") || "Physiotherapy package");
   const totalSessions = parseInt(String(formData.get("totalSessions") || "10"), 10) || 10;
@@ -244,6 +253,7 @@ export async function createPhysioPackage(formData: FormData) {
 }
 
 export async function createAssessment(formData: FormData) {
+  await requireRole(...ACTION_ROLES.createAssessment);
   const patientId = String(formData.get("patientId"));
   if (!patientId) return;
   const packageId = String(formData.get("packageId") || "") || null;
@@ -288,6 +298,7 @@ export async function createAssessment(formData: FormData) {
 
 // ---- home exercise program (F-17) ----
 export async function createHep(formData: FormData) {
+  await requireRole(...ACTION_ROLES.createHep);
   const patientId = String(formData.get("patientId"));
   if (!patientId) return;
   const title = String(formData.get("title") || "").trim() || "Home exercise program";
@@ -326,6 +337,7 @@ export async function createHep(formData: FormData) {
 }
 
 export async function shareHep(formData: FormData) {
+  await requireRole(...ACTION_ROLES.shareHep);
   const id = String(formData.get("id") || "");
   if (!id) return;
   const hep = await prisma.homeExerciseProgram.findUnique({ where: { id } });
@@ -338,6 +350,7 @@ export async function shareHep(formData: FormData) {
 
 // ---- referral letters ----
 export async function createReferral(formData: FormData) {
+  await requireRole(...ACTION_ROLES.createReferral);
   const patientId = String(formData.get("patientId"));
   const referToName = String(formData.get("referToName") || "").trim();
   const reason = String(formData.get("reason") || "").trim();
@@ -378,6 +391,7 @@ export async function createReferral(formData: FormData) {
 
 // ---- imaging ----
 export async function uploadStudy(formData: FormData) {
+  await requireRole(...ACTION_ROLES.uploadStudy);
   const patientId = String(formData.get("patientId"));
   const bodyPart = String(formData.get("bodyPart") || "").trim();
   const view = String(formData.get("view") || "") || null;
@@ -403,6 +417,7 @@ export async function uploadStudy(formData: FormData) {
 }
 
 export async function shareStudy(formData: FormData) {
+  await requireRole(...ACTION_ROLES.shareStudy);
   const studyId = String(formData.get("studyId"));
   if (!studyId) return;
   const study = await prisma.imagingStudy.findUnique({ where: { id: studyId }, include: { patient: true } });
@@ -416,6 +431,7 @@ export async function shareStudy(formData: FormData) {
 // ---- imaging orders + AERB register (F-09 / F-12) ----
 // Doctor places an imaging order (region / view / side); it lands in the technician worklist.
 export async function createImagingOrder(formData: FormData) {
+  await requireRole(...ACTION_ROLES.createImagingOrder);
   const patientId = String(formData.get("patientId"));
   const region = String(formData.get("region") || "").trim();
   if (!patientId || !region) return;
@@ -442,6 +458,7 @@ export async function createImagingOrder(formData: FormData) {
 }
 
 export async function cancelImagingOrder(formData: FormData) {
+  await requireRole(...ACTION_ROLES.cancelImagingOrder);
   const id = String(formData.get("id") || "");
   if (!id) return;
   await prisma.imagingOrder.update({ where: { id }, data: { status: "CANCELLED" } });
@@ -451,6 +468,7 @@ export async function cancelImagingOrder(formData: FormData) {
 // Technician captures an ordered study — attaches the image + exposure details; the order
 // is fulfilled and the study lands in the log / AERB register.
 export async function captureImagingStudy(formData: FormData) {
+  await requireRole(...ACTION_ROLES.captureImagingStudy);
   const orderId = String(formData.get("orderId") || "");
   if (!orderId) return;
   const order = await prisma.imagingOrder.findUnique({ where: { id: orderId } });
@@ -536,6 +554,7 @@ async function sendMessageInternal(patientId: string, type: MessageType, appoint
 }
 
 export async function sendMessage(formData: FormData) {
+  await requireRole(...ACTION_ROLES.sendMessage);
   const patientId = String(formData.get("patientId"));
   const type = String(formData.get("type") || "REMINDER_24H") as MessageType;
   const appointmentId = String(formData.get("appointmentId") || "") || null;
@@ -583,6 +602,7 @@ export async function respondToAppointment(formData: FormData) {
 
 // Desk marks a reschedule/cancel request as actioned (slot refilled / patient rebooked).
 export async function markRequestHandled(formData: FormData) {
+  await requireRole(...ACTION_ROLES.markRequestHandled);
   const id = String(formData.get("id") || "");
   if (!id) return;
   await prisma.appointment.update({ where: { id }, data: { requestHandled: true } });
@@ -591,6 +611,7 @@ export async function markRequestHandled(formData: FormData) {
 
 // ---- settings ----
 export async function updateClinic(formData: FormData) {
+  await requireRole(...ACTION_ROLES.updateClinic);
   const clinic = await getClinic();
   if (!clinic) return;
   await prisma.clinic.update({

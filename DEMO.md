@@ -139,9 +139,9 @@ Each use case: **Scenario** (who/why) · **Demo path** (what to click) · **Talk
 | WhatsApp outbox (F-21) | 13 | ✅ Live (mock provider; real Meta wired, off by default) |
 | Owner dashboard (F-22) | 14 | ✅ Live |
 | Data export/backup (F-26) | 15 | ✅ Live |
-| Compliance config + role-based login (F-23) | 16 | ✅ Live — real login shipped (PR-A: email+password + one-click demo logins); server-side URL/action enforcement lands in PR-B |
+| Compliance config + role-based access (F-23) | 16 | ✅ Live — real login + **server-enforced RBAC**: menus, pages AND actions gated by role (PR-A + PR-B). Demo: sign in as Front Desk vs Owner and note the blocked areas |
 
-**Partially built:** real authentication (F-23) — **PR-A live** (login + role-scoped menus); full server-side RBAC enforcement is **PR-B**.
+**Partially built:** real authentication (F-23) — **login + server-enforced RBAC live** (PR-A + PR-B); remaining **PR-C** is the staff-account management UI + owner "View as" quick-switch (enhancements, not blocking).
 
 **Not yet built (don't demo):** DPDP consent/audit (F-24), pharmacy module (F-29/30), offline mode, object storage for images.
 

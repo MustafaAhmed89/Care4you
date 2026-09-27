@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { requireResource } from "@/lib/session";
 import PrintButton from "@/components/PrintButton";
 import { BackLink } from "@/components/ui";
 import { fmtDate, ageGender } from "@/lib/format";
@@ -8,6 +9,7 @@ import { SCHEDULE_FLAG_LABELS } from "@/lib/constants";
 export const dynamic = "force-dynamic";
 
 export default async function RxPrintPage({ params }: { params: { id: string } }) {
+  await requireResource("rx");
   const [rx, clinic] = await Promise.all([
     prisma.prescription.findUnique({
       where: { id: params.id },

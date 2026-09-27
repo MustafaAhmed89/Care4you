@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Send } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { requireResource } from "@/lib/session";
 import PrintButton from "@/components/PrintButton";
 import { shareHep } from "@/app/actions";
 import { BackLink, Badge } from "@/components/ui";
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 
 // F-17 — printable / shareable Home Exercise Program (same print pattern as Rx/referral).
 export default async function HepPrintPage({ params }: { params: { id: string } }) {
+  await requireResource("hep");
   const [hep, clinic] = await Promise.all([
     prisma.homeExerciseProgram.findUnique({
       where: { id: params.id },
