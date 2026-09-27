@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import { Dumbbell } from "lucide-react";
 import { prisma } from "@/lib/db";
 import NewAssessmentForm from "@/components/NewAssessmentForm";
 import { Card, CardHeader, Badge, Avatar, EmptyState, BackLink } from "@/components/ui";
@@ -55,6 +57,7 @@ export default async function PatientPhysioPage({
       include: {
         assessments: { include: { rom: true, therapist: true }, orderBy: { date: "asc" } },
         packages: { orderBy: { purchaseDate: "desc" } },
+        heps: { include: { exercises: true }, orderBy: { createdAt: "desc" } },
       },
     }),
     prisma.staff.findMany({ where: { role: "PHYSIO", active: true } }),
@@ -145,6 +148,43 @@ export default async function PatientPhysioPage({
           </div>
         </Card>
       )}
+
+      {/* Home exercise program (F-17) */}
+      <Card className="mb-5">
+        <CardHeader
+          title="Home exercise program"
+          subtitle="Prescribe exercises for the patient to do at home"
+          action={
+            <Link href={`/patients/${patient.id}/hep`} className="btn-primary btn-sm">
+              <Dumbbell size={14} /> Build HEP
+            </Link>
+          }
+        />
+        {patient.heps.length === 0 ? (
+          <EmptyState>No home programs yet — build one to print or WhatsApp to the patient.</EmptyState>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {patient.heps.map((h) => (
+              <div key={h.id} className="flex items-center justify-between p-4">
+                <div className="min-w-0">
+                  <Link href={`/hep/${h.id}`} target="_blank" className="text-sm font-medium text-slate-800 hover:text-brand-700">
+                    {h.title}
+                  </Link>
+                  <p className="text-xs text-slate-500">
+                    {fmtDate(h.createdAt)} · {h.exercises.length} exercise{h.exercises.length === 1 ? "" : "s"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {h.sharedAt && <Badge className="bg-green-100 text-green-700">shared</Badge>}
+                  <Link href={`/hep/${h.id}`} target="_blank" className="btn-ghost btn-sm">
+                    Open
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
 
       {/* New assessment */}
       <Card>

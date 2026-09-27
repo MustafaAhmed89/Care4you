@@ -24,6 +24,7 @@ function daysAgo(n: number) {
 export async function seedDemo(prisma: PrismaClient) {
   // children first
   await prisma.referral.deleteMany();
+  await prisma.homeExerciseProgram.deleteMany();
   await prisma.physioRomEntry.deleteMany();
   await prisma.physioAssessment.deleteMany();
   await prisma.message.deleteMany();
@@ -210,6 +211,23 @@ export async function seedDemo(prisma: PrismaClient) {
       data: { packageId: pkgDeepa.id, therapistId: priya.id, date: daysAgo(22 - i * 3), attended: true, painScore: Math.max(1, 7 - i), note: `Session ${i + 1}: ROM improving, pain ${Math.max(1, 7 - i)}/10.` },
     });
   }
+  // F-17 — a shared home exercise program for Deepa (knee rehab)
+  await prisma.homeExerciseProgram.create({
+    data: {
+      patientId: P.deepa.id, createdById: priya.id, title: "Knee rehabilitation — home program",
+      note: "Do these daily. A little ache is normal; stop and call the clinic if you get sharp pain.",
+      sharedAt: daysAgo(2),
+      exercises: {
+        create: [
+          { name: "Quadriceps sets (static)", instructions: "Tighten the thigh, push the knee down into the bed, hold, relax.", sets: "3", reps: "10 (hold 5s)", frequency: "2x/day", sortOrder: 0 },
+          { name: "Straight leg raise", instructions: "Keep the knee straight, lift the leg ~30 cm, hold, lower slowly.", sets: "3", reps: "10", frequency: "Daily", sortOrder: 1 },
+          { name: "Heel slides", instructions: "Slide the heel towards the buttock to bend the knee, then straighten.", sets: "3", reps: "10", frequency: "2x/day", sortOrder: 2 },
+          { name: "Wall squats", instructions: "Back against a wall, slide down to a shallow squat, hold, then rise.", sets: "3", reps: "hold 10s", frequency: "Daily", sortOrder: 3 },
+        ],
+      },
+    },
+  });
+
   const pkgRajesh = await prisma.physioPackage.create({
     data: { patientId: P.rajesh.id, name: "Lower Back Pain — 10 sessions", totalSessions: 10, sessionsUsed: 2, price: 3500, purchaseDate: daysAgo(6), expiryDate: daysAgo(-54), status: "ACTIVE" },
   });

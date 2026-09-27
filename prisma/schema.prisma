@@ -54,6 +54,7 @@ model Staff {
   referrals    Referral[]         @relation("ProviderReferrals")
   imagingOrders  ImagingOrder[]   @relation("OrderedBy")
   imagingStudies ImagingStudy[]   @relation("Operator")
+  heps           HomeExerciseProgram[] @relation("HepBy")
 }
 
 model Patient {
@@ -79,6 +80,7 @@ model Patient {
   assessments   PhysioAssessment[]
   referrals     Referral[]
   imagingOrders ImagingOrder[]
+  heps          HomeExerciseProgram[]
 }
 
 model Appointment {
@@ -195,6 +197,35 @@ model ImagingOrder {
   studies   ImagingStudy[]
 
   @@index([status])
+}
+
+model HomeExerciseProgram {
+  id          String    @id @default(cuid())
+  patientId   String
+  createdById String? // therapist (Staff) who built it
+  title       String
+  note        String?
+  createdAt   DateTime  @default(now())
+  sharedAt    DateTime?
+
+  patient   Patient       @relation(fields: [patientId], references: [id])
+  createdBy Staff?        @relation("HepBy", fields: [createdById], references: [id])
+  exercises HepExercise[]
+
+  @@index([patientId])
+}
+
+model HepExercise {
+  id           String  @id @default(cuid())
+  hepId        String
+  name         String
+  instructions String?
+  sets         String? // free text, e.g. "3"
+  reps         String? // free text, e.g. "10" or "hold 20s"
+  frequency    String? // e.g. "Daily", "2x/day"
+  sortOrder    Int     @default(0)
+
+  hep HomeExerciseProgram @relation(fields: [hepId], references: [id], onDelete: Cascade)
 }
 
 model PhysioPackage {

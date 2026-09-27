@@ -146,6 +146,24 @@ export const XRAY_SIDES: { value: string; label: string }[] = [
   { value: "RIGHT", label: "Right" },
 ];
 
+// Home Exercise Program library (F-17) — a simple starter set the therapist picks from.
+export type LibraryExercise = { name: string; instructions: string; sets: string; reps: string; frequency: string };
+export const EXERCISE_LIBRARY: LibraryExercise[] = [
+  { name: "Quadriceps sets (static)", instructions: "Tighten the thigh, push the knee down into the bed, hold, relax.", sets: "3", reps: "10 (hold 5s)", frequency: "2x/day" },
+  { name: "Straight leg raise", instructions: "Keep the knee straight, lift the leg ~30 cm, hold, lower slowly.", sets: "3", reps: "10", frequency: "Daily" },
+  { name: "Heel slides", instructions: "Slide the heel towards the buttock to bend the knee, then straighten.", sets: "3", reps: "10", frequency: "2x/day" },
+  { name: "Hamstring stretch", instructions: "Sit with the leg straight, reach for the toes, feel the stretch behind the thigh.", sets: "3", reps: "hold 20s", frequency: "Daily" },
+  { name: "Wall squats", instructions: "Back against a wall, slide down to a shallow squat, hold, rise.", sets: "3", reps: "hold 10s", frequency: "Daily" },
+  { name: "Calf raises", instructions: "Rise onto the toes, hold, lower slowly. Use support for balance.", sets: "3", reps: "12", frequency: "Daily" },
+  { name: "Shoulder pendulum", instructions: "Lean forward, let the arm hang, swing gently in small circles.", sets: "2", reps: "10 each way", frequency: "2x/day" },
+  { name: "Scapular squeeze", instructions: "Squeeze the shoulder blades together, hold, relax.", sets: "3", reps: "10 (hold 5s)", frequency: "Daily" },
+  { name: "Neck isometrics", instructions: "Press the head gently into your hand without moving. Hold.", sets: "3", reps: "hold 5s each side", frequency: "Daily" },
+  { name: "Lumbar extension (prone)", instructions: "Lie face down, prop on the elbows, ease into a gentle back extension.", sets: "3", reps: "hold 10s", frequency: "2x/day" },
+  { name: "Pelvic tilts", instructions: "Flatten the low back into the floor by tilting the pelvis, hold.", sets: "3", reps: "10", frequency: "Daily" },
+  { name: "Ankle pumps", instructions: "Move the foot up and down at the ankle to keep circulation.", sets: "3", reps: "15", frequency: "3x/day" },
+  { name: "Wrist flexor stretch", instructions: "Extend the arm, gently pull the fingers back with the other hand.", sets: "3", reps: "hold 20s", frequency: "Daily" },
+];
+
 // Which nav items each role sees (demo RBAC).
 export type NavKey =
   | "queue"

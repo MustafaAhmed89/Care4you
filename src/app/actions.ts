@@ -292,6 +292,56 @@ export async function createAssessment(formData: FormData) {
   redirect(`/patients/${patientId}/physio?saved=assessment`);
 }
 
+// ---- home exercise program (F-17) ----
+export async function createHep(formData: FormData) {
+  const patientId = String(formData.get("patientId"));
+  if (!patientId) return;
+  const title = String(formData.get("title") || "").trim() || "Home exercise program";
+  const note = String(formData.get("note") || "").trim() || null;
+  const therapistId = String(formData.get("therapistId") || "") || null;
+
+  let exercises: any[] = [];
+  try {
+    exercises = JSON.parse(String(formData.get("exercises") || "[]"));
+  } catch {}
+  const valid = exercises.filter((e) => e && e.name && String(e.name).trim());
+  if (valid.length === 0) return;
+
+  const hep = await prisma.homeExerciseProgram.create({
+    data: {
+      patientId,
+      createdById: therapistId || undefined,
+      title,
+      note,
+      exercises: {
+        create: valid.map((e, i) => ({
+          name: String(e.name).trim(),
+          instructions: String(e.instructions || "").trim() || null,
+          sets: String(e.sets || "").trim() || null,
+          reps: String(e.reps || "").trim() || null,
+          frequency: String(e.frequency || "").trim() || null,
+          sortOrder: i,
+        })),
+      },
+    },
+  });
+
+  revalidatePath(`/patients/${patientId}/physio`);
+  revalidatePath(`/patients/${patientId}`);
+  redirect(`/hep/${hep.id}`);
+}
+
+export async function shareHep(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  if (!id) return;
+  const hep = await prisma.homeExerciseProgram.findUnique({ where: { id } });
+  if (!hep) return;
+  await prisma.homeExerciseProgram.update({ where: { id }, data: { sharedAt: new Date() } });
+  await sendMessageInternal(hep.patientId, "REPORT_SHARE", null, "home exercise program");
+  revalidatePath(`/hep/${id}`);
+  revalidatePath(`/patients/${hep.patientId}/physio`);
+}
+
 // ---- referral letters ----
 export async function createReferral(formData: FormData) {
   const patientId = String(formData.get("patientId"));
