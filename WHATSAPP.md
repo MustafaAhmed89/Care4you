@@ -47,10 +47,26 @@ Redeploy Vercel after adding them (env vars only apply to new deployments).
 - Locally: set the vars in `.env`, `npm run dev`, then in the app send a message (e.g. Queue → **Remind**, or `/messages` → Send) to a number that has messaged your business number or is a permitted test recipient.
 - A real send returns status **SENT** (Meta accepts it) and a provider message id. Delivered/Read require webhooks (not implemented — see below).
 
+## 4b. Delivery/read status webhook (optional but recommended)
+
+Real sends start as **SENT**; Delivery/Read updates arrive via Meta webhooks. The app includes a webhook at **`/api/whatsapp/webhook`** that updates each message's status by its WhatsApp message id.
+
+1. Set two env vars (local `.env` + Vercel):
+   ```
+   WHATSAPP_VERIFY_TOKEN=<any random string you choose>
+   WHATSAPP_APP_SECRET=<your Meta app's App Secret>
+   ```
+2. In the Meta app → **WhatsApp → Configuration → Webhook**, set:
+   - **Callback URL:** `https://care4you.vercel.app/api/whatsapp/webhook`
+   - **Verify token:** the same `WHATSAPP_VERIFY_TOKEN` value.
+   Meta calls the URL (GET) and the app echoes the challenge to complete verification.
+3. **Subscribe** the webhook to the **`messages`** field.
+4. Redeploy. Delivered/Read/Failed will now flow into the WhatsApp Outbox automatically. (Signature of each callback is verified against `WHATSAPP_APP_SECRET`.)
+
 ## 5. Notes, limits & next steps
 
 - **Opt-in:** the app only sends to patients with `whatsappOptIn = true` (captured at registration). Keep it that way — messaging non-opted-in users risks the number being blocked.
-- **Status = SENT only:** we don't yet consume Meta **webhooks**, so we can't show Delivered/Read for real sends (mock mode shows Delivered/Read). Adding a webhook route (`/api/whatsapp/webhook`) to update message status is a good follow-up.
+- **Status:** real sends show **SENT** immediately; Delivered/Read require the webhook above (§4b). Mock mode simulates Delivered/Read.
 - **Report sharing is text-only:** `report_ready` notifies the patient; it does **not** attach the X-ray image (images are stored as data URLs, not public URLs). To actually deliver the image, host it (Vercel Blob/S3) and use a media template or send a link within the 24h window.
 - **Phone format:** numbers are normalized to digits with country code (e.g. `+91 98861 20001` → `919886120001`). Ensure patient numbers include the country code.
 - **Cost:** Meta bills per conversation by category; utility templates are low-cost and some are free within a service window. Verify current pricing before quoting ROI.

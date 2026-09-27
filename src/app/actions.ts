@@ -311,6 +311,7 @@ async function sendMessageInternal(patientId: string, type: MessageType, appoint
       type,
       body: msg.body,
       status: result.status,
+      providerId: result.providerId ?? undefined,
       sentAt: result.ok ? new Date() : null,
     },
   });

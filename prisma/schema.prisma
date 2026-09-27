@@ -232,9 +232,12 @@ model Message {
   type          String   // CONFIRM | REMINDER_24H | REMINDER_2H | REPORT_SHARE | RECALL | DUES
   body          String
   status        String   @default("QUEUED") // QUEUED | SENT | DELIVERED | READ | FAILED
+  providerId    String?  // WhatsApp message id (wamid) — matches webhook status callbacks
   createdAt     DateTime @default(now())
   sentAt        DateTime?
 
   patient     Patient      @relation(fields: [patientId], references: [id])
   appointment Appointment? @relation(fields: [appointmentId], references: [id])
+
+  @@index([providerId])
 }
