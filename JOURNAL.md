@@ -206,3 +206,12 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 - Seeded 2 referrals: Lakshmi → arthroplasty opinion (linked to her visit), Rajesh → **urgent** spine-surgery/MRI.
 - **Fixed a latent seed bug** (see §6): `PhysioAssessment`/`PhysioRomEntry` were never in the seed's delete cascade, so re-seeding failed on `patient.deleteMany()` once assessments existed — this would also have broken the daily reseed cron. Added them (+ `Referral`) to the delete block; re-seed is now idempotent (ran twice cleanly).
 - Verified locally end-to-end: profile Refer + Referrals card, prefill from visit, create → redirect → rendered letter, and the seeded urgent letter. Built clean (both new routes compile).
+
+**2026-09-27 (cont.) — Worktree isolation for parallel sessions**
+- **Set up git worktree isolation** so parallel sessions stop sharing one working tree on `main` (the failure that swept an earlier doc edit into the referral commit). Landed via PR #2 (`3c976fd`).
+- **`CLAUDE.md`** — new "Parallel sessions" section: start feature/fix work with `EnterWorktree` (creates `.claude/worktrees/<name>` on a `claude/<name>` branch from `origin/main`), run `scripts/bootstrap-worktree.ps1`, then branch → PR → merge.
+- **`scripts/bootstrap-worktree.ps1`** — a fresh worktree lacks the gitignored `.env`/`.neon`/`node_modules`; it copies the secrets from the primary worktree + runs `npm install` (`-SkipInstall` = env-only). Tested end-to-end. **Gotcha:** an em-dash in the script broke Windows PowerShell 5.1 parsing — keep `.ps1` files pure ASCII.
+- **`.claude/settings.json`** sets `worktree.baseRef=fresh`; **`.gitignore`** now ignores `.claude/worktrees/` + `.claude/settings.local.json`.
+- **Still open:** worktrees share the SAME Neon `production` DB, so parallel `prisma db push` / `npm run reset` collide. True isolation = a Neon branch per worktree wired into the bootstrap (needs Neon CLI re-auth — the broad key was revoked, §3). Not built yet.
+
+<!-- Add new dated entries above this line as work continues. -->
