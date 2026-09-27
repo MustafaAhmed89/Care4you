@@ -52,6 +52,8 @@ model Staff {
   payments     Payment[]
   assessments  PhysioAssessment[] @relation("TherapistAssessments")
   referrals    Referral[]         @relation("ProviderReferrals")
+  imagingOrders  ImagingOrder[]   @relation("OrderedBy")
+  imagingStudies ImagingStudy[]   @relation("Operator")
 }
 
 model Patient {
@@ -76,6 +78,7 @@ model Patient {
   messages      Message[]
   assessments   PhysioAssessment[]
   referrals     Referral[]
+  imagingOrders ImagingOrder[]
 }
 
 model Appointment {
@@ -123,6 +126,7 @@ model Visit {
   invoices     Invoice[]
   studies      ImagingStudy[]
   referrals    Referral[]
+  imagingOrders ImagingOrder[]
 }
 
 model Prescription {
@@ -152,6 +156,7 @@ model ImagingStudy {
   id           String   @id @default(cuid())
   patientId    String
   visitId      String?
+  orderId      String?  // F-09: the imaging order this study fulfilled
   bodyPart     String
   view         String?
   side         String?  // LEFT | RIGHT | NA
@@ -160,9 +165,36 @@ model ImagingStudy {
   reportText   String?
   imagePath    String?
   sharedAt     DateTime?
+  // F-12 — AERB / exposure register fields
+  machineModel String?
+  kvp          Int? // tube voltage (kVp)
+  mas          Int? // tube current-time product (mAs)
+  operatorId   String? // radiographer / operator (Staff)
 
-  patient Patient @relation(fields: [patientId], references: [id])
-  visit   Visit?  @relation(fields: [visitId], references: [id])
+  patient  Patient       @relation(fields: [patientId], references: [id])
+  visit    Visit?        @relation(fields: [visitId], references: [id])
+  order    ImagingOrder? @relation(fields: [orderId], references: [id])
+  operator Staff?        @relation("Operator", fields: [operatorId], references: [id])
+}
+
+model ImagingOrder {
+  id          String   @id @default(cuid())
+  patientId   String
+  visitId     String?
+  orderedById String // referring clinician (Staff)
+  region      String // body part, e.g. "Right Knee"
+  view        String? // projection, e.g. "AP + Lateral"
+  side        String   @default("NA") // LEFT | RIGHT | NA
+  status      String   @default("ORDERED") // ORDERED | CAPTURED | CANCELLED
+  note        String?
+  createdAt   DateTime @default(now())
+
+  patient   Patient       @relation(fields: [patientId], references: [id])
+  visit     Visit?        @relation(fields: [visitId], references: [id])
+  orderedBy Staff         @relation("OrderedBy", fields: [orderedById], references: [id])
+  studies   ImagingStudy[]
+
+  @@index([status])
 }
 
 model PhysioPackage {

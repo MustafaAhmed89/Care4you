@@ -81,7 +81,8 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 | `/appt/[id]` | **Patient-facing** (no login): confirm / reschedule / cancel an appointment — F-03 |
 | `/billing` | Day-end reconciliation (cash/UPI/card) + dues + invoices |
 | `/physio` | Session packages, renewal alerts, log session, sell package |
-| `/imaging` | X-ray studies overview + share |
+| `/imaging` | X-ray order worklist + phone-photo capture (exposure) + study log + AERB banner |
+| `/imaging/register` | Printable AERB / radiation exposure register — F-12 |
 | `/messages` | WhatsApp outbox (chat-style previews) + compose |
 | `/reports` | Owner dashboard (collections, no-show %, dues, revenue by line, 7-day chart) |
 | `/settings` | Clinic identity, GST toggle, AERB, pharmacy toggle |
@@ -92,7 +93,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 - `prisma/schema.prisma` — data model (see PRD §11). `prisma/seed.mjs` — demo clinic + a realistic day.
 - `src/app/actions.ts` — all server actions (mutations).
 - `src/lib/` — `db.ts` (Prisma client), `messaging.ts` (WhatsApp provider), `constants.ts` (enum-like values), `format.ts` (IST formatting), `day.ts` (IST today-range), `session.ts` (cookie role).
-- `src/components/` — UI primitives + client forms (NewVisitForm, NewInvoiceForm, UploadStudyForm, RegisterWalkInForm, NewAssessmentForm, NewReferralForm, AppointmentActions, RoleSwitcher, Sidebar, TopBar, MobileNav, PrintButton).
+- `src/components/` — UI primitives + client forms (NewVisitForm, NewInvoiceForm, UploadStudyForm, RegisterWalkInForm, NewAssessmentForm, NewReferralForm, AppointmentActions, NewImagingOrderForm, CaptureStudyForm, RoleSwitcher, Sidebar, TopBar, MobileNav, PrintButton).
 - `src/middleware.ts` — sets an `x-pathname` header so the root layout renders patient-facing `/appt/*` pages **bare** (no staff sidebar / role switcher).
 
 ---
@@ -120,6 +121,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 - **Seed delete order:** `seedDemo()` wipes children before parents. Any new model with a required FK to `Patient`/`Staff`/`Visit` (Prisma's default `onDelete` is **Restrict**) **must** be added to the `deleteMany()` block at the top of `src/lib/seed.ts` — otherwise re-seeding (and the **daily reseed cron**) fails with a foreign-key RESTRICT error on `patient.deleteMany()`. `PhysioAssessment`/`PhysioRomEntry` and `Referral` are now handled (the assessment models were a latent miss fixed with F-08).
 - **Worktree preview binding:** the desktop app's Browser-pane preview (`preview_start`) runs in the session's **original project root**, not an `EnterWorktree` worktree — so it serves `main`, not your worktree branch (worktree-only routes like `/appt/[id]` 404). To preview worktree code, run `npx next dev -p <port>` from the worktree and open that port directly.
 - **Bare patient layout:** the root layout wraps every page in the staff shell; patient-facing `/appt/*` render bare via `src/middleware.ts` (sets `x-pathname`) + a branch in `layout.tsx`. Put any new patient-facing route under a path that branch checks.
+- **Adding a Prisma `@unique` triggers a data-loss guard:** `prisma db push` treats adding a unique constraint (even on a brand-new all-NULL column, where multiple NULLs are legal in Postgres) as potential data loss and demands `--accept-data-loss` — which the auto-mode classifier blocks on the shared Neon DB. Prefer modelling the relation as **1:many** (no unique needed), or add the constraint via a reviewed migration. F-09's order↔study is 1:many for exactly this reason.
 
 ---
 
@@ -139,7 +141,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 1. ✅ **DONE — Daily auto-reseed.** `vercel.json` cron (`0 0 * * *` = 05:30 IST) → secret-guarded `/api/reseed` → `seedDemo()` (shared module `src/lib/seed.ts`, IST-correct). **Requires `CRON_SECRET` env var in Vercel** (else the route returns 503 and the cron no-ops). Manual trigger: `curl -H "Authorization: Bearer <CRON_SECRET>" https://care4you.vercel.app/api/reseed`. Hobby plan crons run ~once/day at approximate times — fine here.
 2. 🟡 **Real WhatsApp — code DONE (Meta Cloud API).** `MetaCloudProvider` in `src/lib/messaging.ts` sends approved **template** messages; each message type → template name + ordered params via `buildMessage` (verified: CONFIRM/2H = 5 params, 24H = 4, REPORT/RECALL/DUES = 3). Mock stays the default. **To go live (user):** Meta Business + app, phone-number ID, permanent token, create the 6 Utility templates, set `MESSAGING_PROVIDER=meta` + `WHATSAPP_*` env in Vercel, redeploy — full guide in **`WHATSAPP.md`**. Caveat: seeded demo phone numbers are fake, so real sends to them fail — demo with a real opted-in number. Follow-ups: ✅ webhook route `/api/whatsapp/webhook` (Delivered/Read/Failed status) is built — set `WHATSAPP_VERIFY_TOKEN` + `WHATSAPP_APP_SECRET` in Vercel and subscribe the app to the `messages` field (WHATSAPP.md §4b). Remaining: host images + media template for real X-ray sharing.
 3. **Vercel region → Mumbai (`bom1`)** via `vercel.json` for lower latency to India.
-4. 🟡 **Phase-2 clinical depth** (PRD §9): ✅ **physio assessment + progress charts (F-13/F-14) DONE**; ✅ **referral letter (F-08) DONE**; ✅ **one-tap reschedule/cancel link (F-03) DONE** (login-free patient page `/appt/[id]` to confirm / reschedule / cancel; requests surface to the desk on Today's Queue with "Mark handled"; WhatsApp confirmation + reminders carry the link). Remaining: imaging order worklist + AERB register (F-09/F-12), HEP builder (F-17), data export/backup (F-26).
+4. 🟡 **Phase-2 clinical depth** (PRD §9): ✅ **physio (F-13/F-14) DONE**; ✅ **referral letter (F-08) DONE**; ✅ **reschedule/cancel link (F-03) DONE**; ✅ **imaging order worklist + AERB register (F-09/F-12) DONE** (doctor places an order → technician worklist → capture with exposure kVp/mAs + operator; AERB licence/RSO/renewal banner with reminder; printable exposure register at `/imaging/register`). Remaining: HEP builder (F-17), data export/backup (F-26).
 5. **Real authentication** (replace the demo role-switcher) — e.g. Neon Auth / Better Auth — before storing real patient data.
 6. **Object storage for X-rays** (Vercel Blob / S3) instead of data URLs.
 7. **Offline-tolerant mode** (a real buying criterion per research).
@@ -226,5 +228,13 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 - **WhatsApp**: CONFIRM / REMINDER_24H / REMINDER_2H bodies + template params now carry the manage link (`APP_BASE_URL` + `/appt/<id>`); `WHATSAPP.md` + `.env.example` updated (the appt templates gained a trailing link param).
 - Seed: Arjun confirmed via link (today), Fatima (reschedule) + Prakash (cancel) as pending desk requests, + a matching reminder in the outbox. **Seed code updated but NOT run** (shared DB) — the daily reseed / next `npm run reset` will surface it.
 - Verified end-to-end on a manual worktree dev server (port 3005 — the app preview binds to the primary root, see §6): patient page (mobile, bare) → reschedule → banner → desk card → mark handled, and the link in the outbox. Built clean.
+
+**2026-09-27 (cont.) — Imaging order worklist + AERB register (F-09/F-12)**
+- Built in its own worktree (`.claude/worktrees/imaging-worklist`), branched from the F-03-merged `main`.
+- New `ImagingOrder` model (patient / referring doctor / visit / region / view / side / status) + exposure fields on `ImagingStudy` (`machineModel`, `kvp`, `mas`, `operatorId`, `orderId`). Order↔study is **1:many** (avoids a unique constraint — see §6). Additive `prisma db push`.
+- **F-09**: doctor places an order (`createImagingOrder`, region/view/side, auto-linked to the latest visit) → it lands in the **technician worklist** on `/imaging` → tech **captures** it (`CaptureStudyForm` → `captureImagingStudy`): phone photo + machine/kVp/mAs + operator → creates the study, order → CAPTURED.
+- **F-12**: `/imaging` gained an **AERB compliance banner** (licence/RSO/renewal + colour-coded reminder) and a study log with exposure; **printable AERB exposure register** at `/imaging/register` (letterhead + licence block + full kVp/mAs/operator/referring-doctor table).
+- Seed: exposure added to the 3 studies (Siemens Multix, operator Bharathi) + 2 worklist orders (Suresh shoulder, Anita wrist). **Seed updated but NOT run** (shared DB) — surfaces on the next reseed.
+- Verified end-to-end on a manual worktree dev server (port 3006): place order → worklist → capture (exposure) → study log + printable register. Built clean.
 
 <!-- Add new dated entries above this line as work continues. -->

@@ -33,6 +33,7 @@ export async function seedDemo(prisma: PrismaClient) {
   await prisma.physioSession.deleteMany();
   await prisma.physioPackage.deleteMany();
   await prisma.imagingStudy.deleteMany();
+  await prisma.imagingOrder.deleteMany();
   await prisma.rxLine.deleteMany();
   await prisma.prescription.deleteMany();
   await prisma.visit.deleteMany();
@@ -168,12 +169,14 @@ export async function seedDemo(prisma: PrismaClient) {
       { prescriptionId: rxLakshmi.id, genericName: "Pantoprazole", brandName: "Pan", dose: "40 mg", frequency: "1-0-0", duration: "7 days", scheduleFlag: "H" },
     ],
   });
+  const XRAY_MACHINE = "Siemens Multix Fusion";
   await prisma.imagingStudy.create({
     data: {
       patientId: P.lakshmi.id, visitId: vLakshmi.id, bodyPart: "Right Knee", view: "AP + Lateral", side: "RIGHT",
       studyDate: at(9, 52), reportStatus: "SHARED",
       reportText: "Reduced medial joint space, marginal osteophytes — consistent with Grade 2 osteoarthritis.",
       imagePath: "/samples/sample-xray.svg", sharedAt: at(10, 5),
+      machineModel: XRAY_MACHINE, kvp: 60, mas: 8, operatorId: bharathi.id,
     },
   });
   await prisma.imagingStudy.create({
@@ -181,10 +184,22 @@ export async function seedDemo(prisma: PrismaClient) {
       patientId: P.venkatesh.id, bodyPart: "Left Wrist", view: "AP + Lateral", side: "LEFT",
       studyDate: at(11, 10), reportStatus: "READY",
       reportText: "No obvious fracture. Soft-tissue swelling over the distal radius.", imagePath: "/samples/sample-xray.svg",
+      machineModel: XRAY_MACHINE, kvp: 55, mas: 5, operatorId: bharathi.id,
     },
   });
   await prisma.imagingStudy.create({
-    data: { patientId: P.irfan.id, bodyPart: "Lumbar Spine", view: "AP + Lateral", side: "NA", studyDate: at(10, 20), reportStatus: "PENDING" },
+    data: {
+      patientId: P.irfan.id, bodyPart: "Lumbar Spine", view: "AP + Lateral", side: "NA", studyDate: at(10, 20), reportStatus: "PENDING",
+      machineModel: XRAY_MACHINE, kvp: 75, mas: 30, operatorId: bharathi.id,
+    },
+  });
+
+  // F-09 — imaging orders awaiting capture (technician worklist)
+  await prisma.imagingOrder.create({
+    data: { patientId: P.suresh.id, orderedById: drGaurav.id, region: "Right Shoulder", view: "AP + Lateral", side: "RIGHT", note: "Shoulder pain — rule out impingement." },
+  });
+  await prisma.imagingOrder.create({
+    data: { patientId: P.anita.id, orderedById: drGaurav.id, region: "Left Wrist", view: "AP + Lateral", side: "LEFT", note: "Fracture review — assess healing." },
   });
 
   const pkgDeepa = await prisma.physioPackage.create({

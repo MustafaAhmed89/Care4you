@@ -369,6 +369,89 @@ export async function shareStudy(formData: FormData) {
   revalidatePath(`/patients/${study.patientId}`);
 }
 
+// ---- imaging orders + AERB register (F-09 / F-12) ----
+// Doctor places an imaging order (region / view / side); it lands in the technician worklist.
+export async function createImagingOrder(formData: FormData) {
+  const patientId = String(formData.get("patientId"));
+  const region = String(formData.get("region") || "").trim();
+  if (!patientId || !region) return;
+
+  const view = String(formData.get("view") || "").trim() || null;
+  const side = String(formData.get("side") || "NA");
+  const note = String(formData.get("note") || "").trim() || null;
+
+  let orderedById = String(formData.get("orderedById") || "") || null;
+  if (!orderedById) {
+    const doctor = await prisma.staff.findFirst({ where: { role: "OWNER_DOCTOR" } });
+    orderedById = doctor?.id ?? null;
+  }
+  if (!orderedById) return;
+
+  // Link to the patient's most recent visit, if any ("linked to the visit/injury").
+  const lastVisit = await prisma.visit.findFirst({ where: { patientId }, orderBy: { date: "desc" } });
+
+  await prisma.imagingOrder.create({
+    data: { patientId, orderedById, region, view, side, note, visitId: lastVisit?.id ?? undefined },
+  });
+  revalidatePath("/imaging");
+  revalidatePath(`/patients/${patientId}`);
+}
+
+export async function cancelImagingOrder(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  if (!id) return;
+  await prisma.imagingOrder.update({ where: { id }, data: { status: "CANCELLED" } });
+  revalidatePath("/imaging");
+}
+
+// Technician captures an ordered study — attaches the image + exposure details; the order
+// is fulfilled and the study lands in the log / AERB register.
+export async function captureImagingStudy(formData: FormData) {
+  const orderId = String(formData.get("orderId") || "");
+  if (!orderId) return;
+  const order = await prisma.imagingOrder.findUnique({ where: { id: orderId } });
+  if (!order || order.status !== "ORDERED") return;
+
+  const machineModel = String(formData.get("machineModel") || "").trim() || null;
+  const kvpN = parseInt(String(formData.get("kvp") || ""), 10);
+  const masN = parseInt(String(formData.get("mas") || ""), 10);
+  const kvp = Number.isNaN(kvpN) ? null : kvpN;
+  const mas = Number.isNaN(masN) ? null : masN;
+  const operatorId = String(formData.get("operatorId") || "") || null;
+  const reportText = String(formData.get("reportText") || "").trim() || null;
+
+  // Base64 data URL — serverless-safe, no object storage (see uploadStudy).
+  let imagePath: string | null = null;
+  const file = formData.get("file") as File | null;
+  if (file && typeof file.arrayBuffer === "function" && file.size > 0) {
+    const bytes = Buffer.from(await file.arrayBuffer());
+    const mime = file.type || "image/jpeg";
+    imagePath = `data:${mime};base64,${bytes.toString("base64")}`;
+  }
+
+  await prisma.imagingStudy.create({
+    data: {
+      patientId: order.patientId,
+      visitId: order.visitId ?? undefined,
+      orderId: order.id,
+      bodyPart: order.region,
+      view: order.view,
+      side: order.side,
+      reportText,
+      reportStatus: reportText ? "READY" : "PENDING",
+      imagePath,
+      machineModel,
+      kvp: kvp ?? undefined,
+      mas: mas ?? undefined,
+      operatorId: operatorId || undefined,
+    },
+  });
+  await prisma.imagingOrder.update({ where: { id: order.id }, data: { status: "CAPTURED" } });
+  revalidatePath("/imaging");
+  revalidatePath("/imaging/register");
+  revalidatePath(`/patients/${order.patientId}`);
+}
+
 // ---- messaging ----
 async function sendMessageInternal(patientId: string, type: MessageType, appointmentId: string | null, detail?: string) {
   const [clinic, patient, appt] = await Promise.all([
