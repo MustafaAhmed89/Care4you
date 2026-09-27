@@ -217,7 +217,14 @@ export default async function PatientPage({
         <div className="space-y-5">
           {/* Physio */}
           <Card>
-            <CardHeader title="Physiotherapy" />
+            <CardHeader
+              title="Physiotherapy"
+              action={
+                <Link href={`/patients/${patient.id}/physio`} className="text-sm font-medium text-brand-700 hover:underline">
+                  Assessments &amp; progress →
+                </Link>
+              }
+            />
             {patient.packages.length === 0 ? (
               <EmptyState>No physio packages.</EmptyState>
             ) : (

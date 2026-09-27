@@ -50,6 +50,7 @@ model Staff {
   visits       Visit[]
   physioSessions PhysioSession[] @relation("TherapistSessions")
   payments     Payment[]
+  assessments  PhysioAssessment[] @relation("TherapistAssessments")
 }
 
 model Patient {
@@ -72,6 +73,7 @@ model Patient {
   packages      PhysioPackage[]
   invoices      Invoice[]
   messages      Message[]
+  assessments   PhysioAssessment[]
 }
 
 model Appointment {
@@ -166,8 +168,9 @@ model PhysioPackage {
   expiryDate    DateTime?
   status        String   @default("ACTIVE") // ACTIVE | COMPLETED | EXPIRED
 
-  patient  Patient        @relation(fields: [patientId], references: [id])
-  sessions PhysioSession[]
+  patient     Patient          @relation(fields: [patientId], references: [id])
+  sessions    PhysioSession[]
+  assessments PhysioAssessment[]
 }
 
 model PhysioSession {
@@ -181,6 +184,35 @@ model PhysioSession {
 
   package   PhysioPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
   therapist Staff?        @relation("TherapistSessions", fields: [therapistId], references: [id])
+}
+
+model PhysioAssessment {
+  id          String   @id @default(cuid())
+  patientId   String
+  packageId   String?
+  therapistId String?
+  date        DateTime @default(now())
+  painScore   Int? // 0-10 (VAS / NPRS)
+  scaleType   String   @default("NONE") // LEFS | ODI | PSFS | NONE
+  scaleScore  Int?
+  scaleMax    Int?
+  note        String?
+
+  patient   Patient          @relation(fields: [patientId], references: [id])
+  package   PhysioPackage?   @relation(fields: [packageId], references: [id])
+  therapist Staff?           @relation("TherapistAssessments", fields: [therapistId], references: [id])
+  rom       PhysioRomEntry[]
+
+  @@index([patientId])
+}
+
+model PhysioRomEntry {
+  id           String @id @default(cuid())
+  assessmentId String
+  joint        String // e.g. "Right Knee Flexion"
+  degrees      Int
+
+  assessment PhysioAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
 }
 
 model Invoice {

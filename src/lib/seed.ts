@@ -176,6 +176,35 @@ export async function seedDemo(prisma: PrismaClient) {
     data: { patientId: P.meena.id, name: "Shoulder — 6 sessions", totalSessions: 6, sessionsUsed: 6, price: 2400, purchaseDate: daysAgo(40), expiryDate: daysAgo(5), status: "COMPLETED" },
   });
 
+  // Physio assessments — progress over time (drives the progress charts)
+  for (const a of [
+    { d: 22, pain: 7, score: 30, rom: 90 },
+    { d: 12, pain: 5, score: 45, rom: 110 },
+    { d: 2, pain: 3, score: 58, rom: 125 },
+  ]) {
+    await prisma.physioAssessment.create({
+      data: {
+        patientId: P.deepa.id, packageId: pkgDeepa.id, therapistId: priya.id, date: daysAgo(a.d),
+        painScore: a.pain, scaleType: "LEFS", scaleScore: a.score, scaleMax: 80,
+        note: `Knee OA rehab review — pain ${a.pain}/10, LEFS ${a.score}/80.`,
+        rom: { create: [{ joint: "Right Knee Flexion", degrees: a.rom }] },
+      },
+    });
+  }
+  for (const a of [
+    { d: 6, pain: 6, score: 40, rom: 40 },
+    { d: 0, pain: 5, score: 32, rom: 50 },
+  ]) {
+    await prisma.physioAssessment.create({
+      data: {
+        patientId: P.rajesh.id, packageId: pkgRajesh.id, therapistId: priya.id, date: daysAgo(a.d),
+        painScore: a.pain, scaleType: "ODI", scaleScore: a.score, scaleMax: 100,
+        note: `Low back pain rehab — ODI ${a.score}% (lower is better).`,
+        rom: { create: [{ joint: "Lumbar Flexion", degrees: a.rom }] },
+      },
+    });
+  }
+
   const makeInvoice = async ({ patient, visitId, lines, payments, status, notes }: any) => {
     const inv = await prisma.invoice.create({ data: { patientId: patient.id, visitId: visitId ?? null, date: new Date(), status, notes } });
     for (const l of lines) {

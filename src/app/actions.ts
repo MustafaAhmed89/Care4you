@@ -243,6 +243,49 @@ export async function createPhysioPackage(formData: FormData) {
   revalidatePath(`/patients/${patientId}`);
 }
 
+export async function createAssessment(formData: FormData) {
+  const patientId = String(formData.get("patientId"));
+  if (!patientId) return;
+  const packageId = String(formData.get("packageId") || "") || null;
+  const therapistId = String(formData.get("therapistId") || "") || null;
+  const painRaw = String(formData.get("painScore") || "");
+  const painScore = painRaw === "" ? null : Math.max(0, Math.min(10, parseInt(painRaw, 10) || 0));
+  const scaleType = String(formData.get("scaleType") || "NONE");
+  const scaleScoreRaw = String(formData.get("scaleScore") || "");
+  const scaleScore = scaleScoreRaw === "" ? null : parseInt(scaleScoreRaw, 10);
+  const scaleMaxRaw = String(formData.get("scaleMax") || "");
+  const scaleMax = scaleMaxRaw === "" ? null : parseInt(scaleMaxRaw, 10);
+  const note = String(formData.get("note") || "") || null;
+
+  let rom: any[] = [];
+  try {
+    rom = JSON.parse(String(formData.get("rom") || "[]"));
+  } catch {}
+  const validRom = rom.filter((r) => r && r.joint && String(r.joint).trim() && r.degrees !== "" && r.degrees != null);
+
+  const a = await prisma.physioAssessment.create({
+    data: {
+      patientId,
+      packageId: packageId || undefined,
+      therapistId: therapistId || undefined,
+      painScore: painScore ?? undefined,
+      scaleType,
+      scaleScore: scaleScore ?? undefined,
+      scaleMax: scaleMax ?? undefined,
+      note,
+    },
+  });
+  if (validRom.length) {
+    await prisma.physioRomEntry.createMany({
+      data: validRom.map((r) => ({ assessmentId: a.id, joint: String(r.joint), degrees: parseInt(String(r.degrees), 10) || 0 })),
+    });
+  }
+  revalidatePath(`/patients/${patientId}/physio`);
+  revalidatePath(`/patients/${patientId}`);
+  revalidatePath("/physio");
+  redirect(`/patients/${patientId}/physio?saved=assessment`);
+}
+
 // ---- imaging ----
 export async function uploadStudy(formData: FormData) {
   const patientId = String(formData.get("patientId"));

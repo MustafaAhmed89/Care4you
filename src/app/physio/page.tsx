@@ -55,6 +55,9 @@ export default async function PhysioPage() {
               {pkg.patient.name}
             </Link>
             <p className="text-xs text-slate-500">{pkg.name}</p>
+            <Link href={`/patients/${pkg.patientId}/physio`} className="text-xs text-brand-700 hover:underline">
+              Assessments &amp; progress →
+            </Link>
           </div>
           <Badge className={pkg.status === "ACTIVE" ? "bg-brand-100 text-brand-700" : "bg-slate-100 text-slate-500"}>
             {pkg.status.toLowerCase()}
