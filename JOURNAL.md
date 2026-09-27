@@ -9,7 +9,7 @@
 
 **What this is:** a demoable clinic-management web app for small owner-run ortho + physiotherapy clinics in Bengaluru (archetypes: OrthoCure RT Nagar, Chaudhary/Chowdry Ortho). Built to host + demo to clinics as a sales tool.
 
-**Live demo:** https://care4you.vercel.app/  ·  **Repo:** https://github.com/MustafaAhmed89/Care4you (`main`, auto-deploys on push)
+**Live demo:** https://care4you.vercel.app/  ·  **Repo:** https://github.com/MustafaAhmed89/Care4you (`main` auto-deploys to Vercel on merge — **all changes now go via a feature branch + PR, never a direct push to `main`**; see [`CLAUDE.md`](CLAUDE.md))
 
 **Run locally:**
 ```bash
@@ -19,7 +19,7 @@ npm run dev        # http://localhost:3000  (uses the Neon DB via .env)
 npm run reset      # wipe + reload fresh demo data (targets Neon)
 ```
 
-**Before any git push:** `.env` is gitignored (holds real Neon credentials). Never commit it.
+**Git workflow (important):** every fix/feature/enhancement goes on a **new branch → PR → merge to `main`** — never commit directly to `main`. Merging the PR is what deploys to production (Vercel auto-deploys `main`; each PR also gets its own preview URL). `.env` is gitignored (holds real Neon credentials) — never commit it. Full rule in [`CLAUDE.md`](CLAUDE.md).
 
 **Demo freshness:** "today" views only show the **current IST day**. This is now **auto-handled by a daily reseed cron** (`/api/reseed` + `vercel.json`) — but it **requires the `CRON_SECRET` env var set in Vercel** (see §8 item 1). You can also refresh manually anytime with `npm run reset`.
 
@@ -75,6 +75,8 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 | `/patients`, `/patients/[id]` | Patient list/search + full profile (3-sec history) |
 | `/patients/[id]/visit` | New visit + prescription (dynamic Rx lines) |
 | `/rx/[id]` | Printable prescription (letterhead + NMC no.) |
+| `/patients/[id]/refer` | Compose a referral letter (auto-prefilled from the latest visit) |
+| `/referral/[id]` | Printable referral letter (clinic letterhead) |
 | `/receipt/[invoiceId]` | Printable GST-aware receipt |
 | `/billing` | Day-end reconciliation (cash/UPI/card) + dues + invoices |
 | `/physio` | Session packages, renewal alerts, log session, sell package |
@@ -89,7 +91,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 - `prisma/schema.prisma` — data model (see PRD §11). `prisma/seed.mjs` — demo clinic + a realistic day.
 - `src/app/actions.ts` — all server actions (mutations).
 - `src/lib/` — `db.ts` (Prisma client), `messaging.ts` (WhatsApp provider), `constants.ts` (enum-like values), `format.ts` (IST formatting), `day.ts` (IST today-range), `session.ts` (cookie role).
-- `src/components/` — UI primitives + client forms (NewVisitForm, NewInvoiceForm, UploadStudyForm, RegisterWalkInForm, RoleSwitcher, Sidebar, TopBar, PrintButton).
+- `src/components/` — UI primitives + client forms (NewVisitForm, NewInvoiceForm, UploadStudyForm, RegisterWalkInForm, NewAssessmentForm, NewReferralForm, RoleSwitcher, Sidebar, TopBar, MobileNav, PrintButton).
 
 ---
 
@@ -113,6 +115,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 - **Prisma + SQLite has no enums** — enum-like fields are Strings; allowed values live in `src/lib/constants.ts`. (Kept as Strings on Postgres too for portability.)
 - **Neon env var names:** `neon link` writes `DATABASE_URL` (pooled) + `DATABASE_URL_UNPOOLED` (direct). Prisma `directUrl = env("DATABASE_URL_UNPOOLED")`. (An earlier `DIRECT_URL` placeholder was removed.)
 - **Vercel project name** must be lowercase.
+- **Seed delete order:** `seedDemo()` wipes children before parents. Any new model with a required FK to `Patient`/`Staff`/`Visit` (Prisma's default `onDelete` is **Restrict**) **must** be added to the `deleteMany()` block at the top of `src/lib/seed.ts` — otherwise re-seeding (and the **daily reseed cron**) fails with a foreign-key RESTRICT error on `patient.deleteMany()`. `PhysioAssessment`/`PhysioRomEntry` and `Referral` are now handled (the assessment models were a latent miss fixed with F-08).
 
 ---
 
@@ -132,7 +135,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 1. ✅ **DONE — Daily auto-reseed.** `vercel.json` cron (`0 0 * * *` = 05:30 IST) → secret-guarded `/api/reseed` → `seedDemo()` (shared module `src/lib/seed.ts`, IST-correct). **Requires `CRON_SECRET` env var in Vercel** (else the route returns 503 and the cron no-ops). Manual trigger: `curl -H "Authorization: Bearer <CRON_SECRET>" https://care4you.vercel.app/api/reseed`. Hobby plan crons run ~once/day at approximate times — fine here.
 2. 🟡 **Real WhatsApp — code DONE (Meta Cloud API).** `MetaCloudProvider` in `src/lib/messaging.ts` sends approved **template** messages; each message type → template name + ordered params via `buildMessage` (verified: CONFIRM/2H = 5 params, 24H = 4, REPORT/RECALL/DUES = 3). Mock stays the default. **To go live (user):** Meta Business + app, phone-number ID, permanent token, create the 6 Utility templates, set `MESSAGING_PROVIDER=meta` + `WHATSAPP_*` env in Vercel, redeploy — full guide in **`WHATSAPP.md`**. Caveat: seeded demo phone numbers are fake, so real sends to them fail — demo with a real opted-in number. Follow-ups: ✅ webhook route `/api/whatsapp/webhook` (Delivered/Read/Failed status) is built — set `WHATSAPP_VERIFY_TOKEN` + `WHATSAPP_APP_SECRET` in Vercel and subscribe the app to the `messages` field (WHATSAPP.md §4b). Remaining: host images + media template for real X-ray sharing.
 3. **Vercel region → Mumbai (`bom1`)** via `vercel.json` for lower latency to India.
-4. 🟡 **Phase-2 clinical depth** (PRD §9): ✅ **physio assessment + progress charts (F-13/F-14) DONE** (pain 0-10, ROM, LEFS/PSFS/ODI; trend charts at `/patients/[id]/physio`). Remaining: imaging order worklist + AERB register (F-09/F-12), referral letter (F-08), HEP builder (F-17), reschedule link (F-03), data export/backup (F-26).
+4. 🟡 **Phase-2 clinical depth** (PRD §9): ✅ **physio assessment + progress charts (F-13/F-14) DONE** (pain 0-10, ROM, LEFS/PSFS/ODI; trend charts at `/patients/[id]/physio`); ✅ **referral letter (F-08) DONE** (printable letterhead referral at `/referral/[id]`, composed at `/patients/[id]/refer`, auto-prefilled from the latest visit). Remaining: imaging order worklist + AERB register (F-09/F-12), HEP builder (F-17), reschedule link (F-03), data export/backup (F-26).
 5. **Real authentication** (replace the demo role-switcher) — e.g. Neon Auth / Better Auth — before storing real patient data.
 6. **Object storage for X-rays** (Vercel Blob / S3) instead of data URLs.
 7. **Offline-tolerant mode** (a real buying criterion per research).
@@ -190,4 +193,16 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 - Seeded 3 assessments for Deepa (pain 7→3, LEFS 30→58, knee ROM 90→125°) and 2 for Rajesh so the charts are populated in the demo. Verified locally: charts + history + form render.
 - Note: added `autoPort:true` to `.claude/launch.json` (port 3000 was held by a stale server; local dev now falls back to a free port).
 
-<!-- Add new dated entries above this line as work continues. -->
+**2026-09-27 (cont.) — Mobile queue row layout fix + branch-workflow rule**
+- **Fixed the Today's Queue rows on mobile** (`src/app/page.tsx`): each row was a single `flex flex-wrap` line, so the patient block (`min-w-0 flex-1`) shrank while badges/buttons held their width — name, phone and reason compressed into a thin column on phones. Rows now **stack below `sm`** (patient identity full-width on top; badges + actions wrap underneath) and revert to the original horizontal row at `sm+`. Verified at 375px and 1280px, both locally and on the live URL. (Distinct from the mobile-*nav* drawer fix above.)
+- **Also cleared a corrupted `.next` dev cache** that was breaking local styling entirely (500s: `ENOENT .next\server`, `Cannot find module './379.js'`, `__webpack_modules__[moduleId] is not a function`; the `useContext` null errors were downstream symptoms). Fix: stop dev server → delete `.next` → restart. Pre-existing, not caused by the edit; `.next` is gitignored. Recurs if a build/dev process is killed mid-write — see §6 Prisma-lock gotcha.
+- Shipped as commit `c7d2dce`, pushed **directly to `main`**.
+- **New rule going forward (user-directed):** every fix/feature/enhancement goes on a **feature branch → PR → merge to `main`**, never a direct push to `main`. Documented in §0 and the new project [`CLAUDE.md`](CLAUDE.md).
+
+**2026-09-27 (cont.) — Referral letter (F-08)**
+- Added the `Referral` model (patient / referring provider / optional originating visit; refer-to name + facility, specialty, urgency, reason, clinical summary, current meds; pushed to Neon). `createReferral` server action → redirects to the print page.
+- Compose at `/patients/[id]/refer` (`NewReferralForm`) **auto-prefills** reason / clinical-summary / current-meds from the patient's latest visit + prescription — the doctor mostly just fills the addressee. Printable letterhead letter at `/referral/[id]` (same `no-print`/`print-area` pattern as Rx & receipt; URGENT badge, addressee block, salutation, signature + reg no, footer).
+- Profile integration: **Refer** button in the header, a per-visit **Refer** quick-action (carries `visitId` for prefill), and a **Referrals** card listing past letters with Print links.
+- Seeded 2 referrals: Lakshmi → arthroplasty opinion (linked to her visit), Rajesh → **urgent** spine-surgery/MRI.
+- **Fixed a latent seed bug** (see §6): `PhysioAssessment`/`PhysioRomEntry` were never in the seed's delete cascade, so re-seeding failed on `patient.deleteMany()` once assessments existed — this would also have broken the daily reseed cron. Added them (+ `Referral`) to the delete block; re-seed is now idempotent (ran twice cleanly).
+- Verified locally end-to-end: profile Refer + Referrals card, prefill from visit, create → redirect → rendered letter, and the seeded urgent letter. Built clean (both new routes compile).

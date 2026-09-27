@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FileText, Printer, Share2, Bell, Stethoscope } from "lucide-react";
+import { FileText, Printer, Share2, Bell, Stethoscope, ArrowUpRight } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { addPayment, recordPhysioSession, shareStudy, sendMessage } from "@/app/actions";
 import { Card, CardHeader, Badge, Avatar, EmptyState, BackLink } from "@/components/ui";
 import UploadStudyForm from "@/components/UploadStudyForm";
 import NewInvoiceForm from "@/components/NewInvoiceForm";
 import { inr, fmtDate, fmtDateTime, initials, ageGender } from "@/lib/format";
-import { STATUS_BADGE, MESSAGE_TYPE_LABELS, SCHEDULE_FLAG_LABELS } from "@/lib/constants";
+import { STATUS_BADGE, MESSAGE_TYPE_LABELS, SCHEDULE_FLAG_LABELS, REFERRAL_URGENCY_LABELS } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +27,7 @@ export default async function PatientPage({
         packages: { include: { sessions: { orderBy: { date: "desc" } } }, orderBy: { purchaseDate: "desc" } },
         invoices: { include: { lines: true, payments: true }, orderBy: { date: "desc" } },
         messages: { orderBy: { createdAt: "desc" } },
+        referrals: { include: { provider: true }, orderBy: { date: "desc" } },
       },
     }),
     prisma.staff.findFirst({ where: { role: "OWNER_DOCTOR" } }),
@@ -82,6 +83,9 @@ export default async function PatientPage({
                 <Stethoscope size={16} /> New visit
               </Link>
             )}
+            <Link href={`/patients/${patient.id}/refer`} className="btn-ghost btn-sm">
+              <ArrowUpRight size={15} /> Refer
+            </Link>
             <UploadStudyForm patientId={patient.id} compact />
             <form action={sendMessage}>
               <input type="hidden" name="patientId" value={patient.id} />
@@ -114,11 +118,16 @@ export default async function PatientPage({
                         </Badge>
                         <span className="text-xs text-slate-400">{v.provider.name}</span>
                       </div>
-                      {v.prescription && (
-                        <Link href={`/rx/${v.prescription.id}`} className="btn-ghost btn-sm" target="_blank">
-                          <Printer size={13} /> Print Rx
+                      <div className="flex items-center gap-1.5">
+                        <Link href={`/patients/${patient.id}/refer?visitId=${v.id}`} className="btn-ghost btn-sm">
+                          <ArrowUpRight size={13} /> Refer
                         </Link>
-                      )}
+                        {v.prescription && (
+                          <Link href={`/rx/${v.prescription.id}`} className="btn-ghost btn-sm" target="_blank">
+                            <Printer size={13} /> Print Rx
+                          </Link>
+                        )}
+                      </div>
                     </div>
                     <div className="mt-2 grid gap-1 text-sm text-slate-600">
                       {v.complaint && <p><span className="text-slate-400">Complaint:</span> {v.complaint}</p>}
@@ -206,6 +215,45 @@ export default async function PatientPage({
                         </button>
                       </form>
                     )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {/* Referrals */}
+          <Card>
+            <CardHeader
+              title="Referrals"
+              subtitle={`${patient.referrals.length} letter${patient.referrals.length === 1 ? "" : "s"}`}
+              action={
+                <Link href={`/patients/${patient.id}/refer`} className="text-sm font-medium text-brand-700 hover:underline">
+                  + New referral
+                </Link>
+              }
+            />
+            {patient.referrals.length === 0 ? (
+              <EmptyState>No referral letters yet.</EmptyState>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {patient.referrals.map((r) => (
+                  <div key={r.id} className="flex items-start justify-between gap-3 p-5">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-slate-800">{r.referToName}</p>
+                        {r.urgency === "URGENT" && (
+                          <Badge className="bg-red-100 text-red-700">{REFERRAL_URGENCY_LABELS[r.urgency]}</Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        {[r.specialty, r.referToFacility].filter(Boolean).join(" · ") || "—"}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-600">{r.reason}</p>
+                      <p className="mt-1 text-[11px] text-slate-400">{fmtDate(r.date)} · {r.provider.name}</p>
+                    </div>
+                    <Link href={`/referral/${r.id}`} target="_blank" className="btn-ghost btn-sm shrink-0">
+                      <Printer size={13} /> Print
+                    </Link>
                   </div>
                 ))}
               </div>

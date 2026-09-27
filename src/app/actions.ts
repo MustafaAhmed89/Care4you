@@ -286,6 +286,46 @@ export async function createAssessment(formData: FormData) {
   redirect(`/patients/${patientId}/physio?saved=assessment`);
 }
 
+// ---- referral letters ----
+export async function createReferral(formData: FormData) {
+  const patientId = String(formData.get("patientId"));
+  const referToName = String(formData.get("referToName") || "").trim();
+  const reason = String(formData.get("reason") || "").trim();
+  if (!patientId || !referToName || !reason) return;
+
+  let providerId = String(formData.get("providerId") || "") || null;
+  if (!providerId) {
+    const doctor = await prisma.staff.findFirst({ where: { role: "OWNER_DOCTOR" } });
+    providerId = doctor?.id ?? null;
+  }
+  if (!providerId) return;
+
+  const visitId = String(formData.get("visitId") || "") || null;
+  const referToFacility = String(formData.get("referToFacility") || "").trim() || null;
+  const specialty = String(formData.get("specialty") || "").trim() || null;
+  const urgency = String(formData.get("urgency") || "ROUTINE") === "URGENT" ? "URGENT" : "ROUTINE";
+  const clinicalSummary = String(formData.get("clinicalSummary") || "").trim() || null;
+  const medications = String(formData.get("medications") || "").trim() || null;
+
+  const referral = await prisma.referral.create({
+    data: {
+      patientId,
+      providerId,
+      visitId: visitId || undefined,
+      referToName,
+      referToFacility,
+      specialty,
+      urgency,
+      reason,
+      clinicalSummary,
+      medications,
+    },
+  });
+
+  revalidatePath(`/patients/${patientId}`);
+  redirect(`/referral/${referral.id}`);
+}
+
 // ---- imaging ----
 export async function uploadStudy(formData: FormData) {
   const patientId = String(formData.get("patientId"));
