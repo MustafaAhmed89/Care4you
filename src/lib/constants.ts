@@ -123,6 +123,29 @@ export const REFERRAL_SPECIALTIES = [
   "Higher Centre / Hospital Admission",
 ] as const;
 
+// Imaging orders + AERB / exposure register (F-09 / F-12)
+export const IMAGING_ORDER_STATUS_LABELS: Record<string, string> = {
+  ORDERED: "Ordered",
+  CAPTURED: "Captured",
+  CANCELLED: "Cancelled",
+};
+
+// Common X-ray regions and projections (form suggestions).
+export const XRAY_REGIONS = [
+  "Right Knee", "Left Knee", "Right Shoulder", "Left Shoulder",
+  "Cervical Spine", "Lumbar Spine", "Right Wrist", "Left Wrist",
+  "Right Ankle", "Left Ankle", "Right Hip", "Left Hip",
+  "Right Hand", "Left Hand", "Right Foot", "Left Foot", "Chest", "Pelvis",
+] as const;
+
+export const XRAY_VIEWS = ["AP", "Lateral", "AP + Lateral", "Oblique", "Skyline", "PA", "Weight-bearing"] as const;
+
+export const XRAY_SIDES: { value: string; label: string }[] = [
+  { value: "NA", label: "N/A" },
+  { value: "LEFT", label: "Left" },
+  { value: "RIGHT", label: "Right" },
+];
+
 // Which nav items each role sees (demo RBAC).
 export type NavKey =
   | "queue"
