@@ -88,6 +88,11 @@ model Appointment {
   source        String   @default("WALK_IN") // PHONE | WALK_IN | WHATSAPP
   tokenNo       Int?
   reason        String?
+  // F-03 — patient self-service via the WhatsApp reschedule/cancel link (no login)
+  patientResponse String?   // CONFIRMED | RESCHEDULE | CANCELLED
+  responseNote    String?   // preferred new time / reason supplied by the patient
+  respondedAt     DateTime? // when the patient tapped the link (action log)
+  requestHandled  Boolean   @default(false) // desk has actioned the freed/rebooked slot
   createdAt     DateTime @default(now())
 
   patient   Patient @relation(fields: [patientId], references: [id])

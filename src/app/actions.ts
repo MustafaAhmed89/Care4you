@@ -21,6 +21,12 @@ async function getClinic() {
   return prisma.clinic.findFirst();
 }
 
+// Public base URL for patient-facing links (F-03 reschedule/cancel). Override with
+// APP_BASE_URL in the environment; defaults to the production demo domain.
+function appBaseUrl(): string {
+  return (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "https://care4you.vercel.app").replace(/\/+$/, "");
+}
+
 // ---- role switch (demo auth) ----
 export async function setRole(formData: FormData) {
   const role = String(formData.get("role") || "OWNER_DOCTOR");
@@ -373,6 +379,7 @@ async function sendMessageInternal(patientId: string, type: MessageType, appoint
   if (!patient || !clinic) return;
 
   const whenText = appt ? formatInTimeZone(new Date(appt.scheduledStart), CLINIC_TZ, "d MMM 'at' h:mm a") : "";
+  const manageUrl = appt ? `${appBaseUrl()}/appt/${appt.id}` : undefined;
   const msg = buildMessage(type, {
     patientName: patient.name,
     clinicName: clinic.name,
@@ -381,6 +388,7 @@ async function sendMessageInternal(patientId: string, type: MessageType, appoint
     whenText,
     tokenNo: appt?.tokenNo ?? null,
     detail,
+    manageUrl,
   });
 
   const provider = getProvider();
@@ -408,6 +416,49 @@ export async function sendMessage(formData: FormData) {
   if (!patientId) return;
   await sendMessageInternal(patientId, type, appointmentId, detail);
   revalidatePath("/messages");
+  revalidatePath("/");
+}
+
+// ---- reschedule / cancel (F-03) ----
+// Public, login-free: called from the patient's WhatsApp link page (/appt/[id]).
+export async function respondToAppointment(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  const action = String(formData.get("action") || "");
+  const note = String(formData.get("note") || "").trim() || null;
+  if (!id || !["CONFIRM", "RESCHEDULE", "CANCEL"].includes(action)) return;
+
+  const appt = await prisma.appointment.findUnique({ where: { id } });
+  if (!appt) return;
+  // Once the patient has arrived or the visit is over, the link is read-only.
+  if (["CHECKED_IN", "IN_PROGRESS", "COMPLETED"].includes(appt.status)) return;
+
+  const map: Record<string, { patientResponse: string; status: string; handled: boolean }> = {
+    CONFIRM: { patientResponse: "CONFIRMED", status: "CONFIRMED", handled: true },
+    RESCHEDULE: { patientResponse: "RESCHEDULE", status: "RESCHEDULED", handled: false },
+    CANCEL: { patientResponse: "CANCELLED", status: "CANCELLED", handled: false },
+  };
+  const next = map[action];
+
+  await prisma.appointment.update({
+    where: { id },
+    data: {
+      status: next.status,
+      patientResponse: next.patientResponse,
+      responseNote: action === "CONFIRM" ? null : note,
+      respondedAt: new Date(),
+      requestHandled: next.handled,
+    },
+  });
+
+  revalidatePath(`/appt/${id}`);
+  revalidatePath("/");
+}
+
+// Desk marks a reschedule/cancel request as actioned (slot refilled / patient rebooked).
+export async function markRequestHandled(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  if (!id) return;
+  await prisma.appointment.update({ where: { id }, data: { requestHandled: true } });
   revalidatePath("/");
 }
 

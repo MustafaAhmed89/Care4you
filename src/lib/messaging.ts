@@ -32,6 +32,7 @@ export interface TemplateContext {
   whenText?: string;
   tokenNo?: number | null;
   detail?: string;
+  manageUrl?: string; // F-03: one-tap reschedule/cancel link for appointment messages
 }
 
 // Human-readable body — used for the outbox log, the in-app preview, and mock sends.
@@ -42,13 +43,17 @@ export function buildBody(type: MessageType, c: TemplateContext): string {
     case "CONFIRM":
       return `Hello ${c.patientName}, your appointment${dr} at ${clinic} is confirmed for ${c.whenText}.${
         c.tokenNo ? ` Token: ${c.tokenNo}.` : ""
-      } Reply to reschedule. — ${clinic}`;
+      }${c.manageUrl ? ` Confirm, reschedule or cancel: ${c.manageUrl}` : " Reply to reschedule."} — ${clinic}`;
     case "REMINDER_24H":
-      return `Reminder: ${c.patientName}, you have an appointment${dr} at ${clinic} ${c.whenText}. Please reply CANCEL or RESCHEDULE if you can't make it. — ${clinic}`;
+      return `Reminder: ${c.patientName}, you have an appointment${dr} at ${clinic} ${c.whenText}.${
+        c.manageUrl
+          ? ` Can't make it? Reschedule or cancel here: ${c.manageUrl}`
+          : " Please reply CANCEL or RESCHEDULE if you can't make it."
+      } — ${clinic}`;
     case "REMINDER_2H":
       return `See you soon, ${c.patientName}! Your appointment${dr} at ${clinic} is at ${c.whenText}.${
         c.tokenNo ? ` Your token is ${c.tokenNo}.` : ""
-      } — ${clinic}`;
+      }${c.manageUrl ? ` Manage your appointment: ${c.manageUrl}` : ""} — ${clinic}`;
     case "REPORT_SHARE":
       return `Hello ${c.patientName}, your ${c.detail || "report"} from ${clinic} is ready. Keep it for your records. — ${clinic}`;
     case "RECALL":
@@ -88,16 +93,17 @@ export function buildMessage(type: MessageType, c: TemplateContext): OutboundMes
   const when = ne(c.whenText, "your scheduled time");
   const token = ne(c.tokenNo, "-");
   const detail = ne(c.detail, "-");
+  const manage = ne(c.manageUrl, "-"); // F-03: appended to appointment templates (see WHATSAPP.md)
 
   const t = (n: string, language: string, params: string[]): OutboundMessage => ({ type, body, template: { name: n, language, params } });
 
   switch (type) {
     case "CONFIRM":
-      return t(tpl("WA_TPL_CONFIRM", "appt_confirmation"), lang, [name, dr, clinic, when, token]);
+      return t(tpl("WA_TPL_CONFIRM", "appt_confirmation"), lang, [name, dr, clinic, when, token, manage]);
     case "REMINDER_24H":
-      return t(tpl("WA_TPL_REMINDER_24H", "appt_reminder_24h"), lang, [name, dr, clinic, when]);
+      return t(tpl("WA_TPL_REMINDER_24H", "appt_reminder_24h"), lang, [name, dr, clinic, when, manage]);
     case "REMINDER_2H":
-      return t(tpl("WA_TPL_REMINDER_2H", "appt_reminder_2h"), lang, [name, dr, clinic, when, token]);
+      return t(tpl("WA_TPL_REMINDER_2H", "appt_reminder_2h"), lang, [name, dr, clinic, when, token, manage]);
     case "REPORT_SHARE":
       return t(tpl("WA_TPL_REPORT_SHARE", "report_ready"), lang, [name, detail, clinic]);
     case "RECALL":
@@ -105,7 +111,7 @@ export function buildMessage(type: MessageType, c: TemplateContext): OutboundMes
     case "DUES":
       return t(tpl("WA_TPL_DUES", "payment_reminder"), lang, [name, detail, clinic]);
     default:
-      return t("appt_confirmation", lang, [name, dr, clinic, when, token]);
+      return t("appt_confirmation", lang, [name, dr, clinic, when, token, manage]);
   }
 }
 

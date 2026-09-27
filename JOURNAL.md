@@ -78,6 +78,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 | `/patients/[id]/refer` | Compose a referral letter (auto-prefilled from the latest visit) |
 | `/referral/[id]` | Printable referral letter (clinic letterhead) |
 | `/receipt/[invoiceId]` | Printable GST-aware receipt |
+| `/appt/[id]` | **Patient-facing** (no login): confirm / reschedule / cancel an appointment — F-03 |
 | `/billing` | Day-end reconciliation (cash/UPI/card) + dues + invoices |
 | `/physio` | Session packages, renewal alerts, log session, sell package |
 | `/imaging` | X-ray studies overview + share |
@@ -91,7 +92,8 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 - `prisma/schema.prisma` — data model (see PRD §11). `prisma/seed.mjs` — demo clinic + a realistic day.
 - `src/app/actions.ts` — all server actions (mutations).
 - `src/lib/` — `db.ts` (Prisma client), `messaging.ts` (WhatsApp provider), `constants.ts` (enum-like values), `format.ts` (IST formatting), `day.ts` (IST today-range), `session.ts` (cookie role).
-- `src/components/` — UI primitives + client forms (NewVisitForm, NewInvoiceForm, UploadStudyForm, RegisterWalkInForm, NewAssessmentForm, NewReferralForm, RoleSwitcher, Sidebar, TopBar, MobileNav, PrintButton).
+- `src/components/` — UI primitives + client forms (NewVisitForm, NewInvoiceForm, UploadStudyForm, RegisterWalkInForm, NewAssessmentForm, NewReferralForm, AppointmentActions, RoleSwitcher, Sidebar, TopBar, MobileNav, PrintButton).
+- `src/middleware.ts` — sets an `x-pathname` header so the root layout renders patient-facing `/appt/*` pages **bare** (no staff sidebar / role switcher).
 
 ---
 
@@ -116,6 +118,8 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 - **Neon env var names:** `neon link` writes `DATABASE_URL` (pooled) + `DATABASE_URL_UNPOOLED` (direct). Prisma `directUrl = env("DATABASE_URL_UNPOOLED")`. (An earlier `DIRECT_URL` placeholder was removed.)
 - **Vercel project name** must be lowercase.
 - **Seed delete order:** `seedDemo()` wipes children before parents. Any new model with a required FK to `Patient`/`Staff`/`Visit` (Prisma's default `onDelete` is **Restrict**) **must** be added to the `deleteMany()` block at the top of `src/lib/seed.ts` — otherwise re-seeding (and the **daily reseed cron**) fails with a foreign-key RESTRICT error on `patient.deleteMany()`. `PhysioAssessment`/`PhysioRomEntry` and `Referral` are now handled (the assessment models were a latent miss fixed with F-08).
+- **Worktree preview binding:** the desktop app's Browser-pane preview (`preview_start`) runs in the session's **original project root**, not an `EnterWorktree` worktree — so it serves `main`, not your worktree branch (worktree-only routes like `/appt/[id]` 404). To preview worktree code, run `npx next dev -p <port>` from the worktree and open that port directly.
+- **Bare patient layout:** the root layout wraps every page in the staff shell; patient-facing `/appt/*` render bare via `src/middleware.ts` (sets `x-pathname`) + a branch in `layout.tsx`. Put any new patient-facing route under a path that branch checks.
 
 ---
 
@@ -135,7 +139,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 1. ✅ **DONE — Daily auto-reseed.** `vercel.json` cron (`0 0 * * *` = 05:30 IST) → secret-guarded `/api/reseed` → `seedDemo()` (shared module `src/lib/seed.ts`, IST-correct). **Requires `CRON_SECRET` env var in Vercel** (else the route returns 503 and the cron no-ops). Manual trigger: `curl -H "Authorization: Bearer <CRON_SECRET>" https://care4you.vercel.app/api/reseed`. Hobby plan crons run ~once/day at approximate times — fine here.
 2. 🟡 **Real WhatsApp — code DONE (Meta Cloud API).** `MetaCloudProvider` in `src/lib/messaging.ts` sends approved **template** messages; each message type → template name + ordered params via `buildMessage` (verified: CONFIRM/2H = 5 params, 24H = 4, REPORT/RECALL/DUES = 3). Mock stays the default. **To go live (user):** Meta Business + app, phone-number ID, permanent token, create the 6 Utility templates, set `MESSAGING_PROVIDER=meta` + `WHATSAPP_*` env in Vercel, redeploy — full guide in **`WHATSAPP.md`**. Caveat: seeded demo phone numbers are fake, so real sends to them fail — demo with a real opted-in number. Follow-ups: ✅ webhook route `/api/whatsapp/webhook` (Delivered/Read/Failed status) is built — set `WHATSAPP_VERIFY_TOKEN` + `WHATSAPP_APP_SECRET` in Vercel and subscribe the app to the `messages` field (WHATSAPP.md §4b). Remaining: host images + media template for real X-ray sharing.
 3. **Vercel region → Mumbai (`bom1`)** via `vercel.json` for lower latency to India.
-4. 🟡 **Phase-2 clinical depth** (PRD §9): ✅ **physio assessment + progress charts (F-13/F-14) DONE** (pain 0-10, ROM, LEFS/PSFS/ODI; trend charts at `/patients/[id]/physio`); ✅ **referral letter (F-08) DONE** (printable letterhead referral at `/referral/[id]`, composed at `/patients/[id]/refer`, auto-prefilled from the latest visit). Remaining: imaging order worklist + AERB register (F-09/F-12), HEP builder (F-17), reschedule link (F-03), data export/backup (F-26).
+4. 🟡 **Phase-2 clinical depth** (PRD §9): ✅ **physio assessment + progress charts (F-13/F-14) DONE**; ✅ **referral letter (F-08) DONE**; ✅ **one-tap reschedule/cancel link (F-03) DONE** (login-free patient page `/appt/[id]` to confirm / reschedule / cancel; requests surface to the desk on Today's Queue with "Mark handled"; WhatsApp confirmation + reminders carry the link). Remaining: imaging order worklist + AERB register (F-09/F-12), HEP builder (F-17), data export/backup (F-26).
 5. **Real authentication** (replace the demo role-switcher) — e.g. Neon Auth / Better Auth — before storing real patient data.
 6. **Object storage for X-rays** (Vercel Blob / S3) instead of data URLs.
 7. **Offline-tolerant mode** (a real buying criterion per research).
@@ -213,5 +217,14 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 - **`scripts/bootstrap-worktree.ps1`** — a fresh worktree lacks the gitignored `.env`/`.neon`/`node_modules`; it copies the secrets from the primary worktree + runs `npm install` (`-SkipInstall` = env-only). Tested end-to-end. **Gotcha:** an em-dash in the script broke Windows PowerShell 5.1 parsing — keep `.ps1` files pure ASCII.
 - **`.claude/settings.json`** sets `worktree.baseRef=fresh`; **`.gitignore`** now ignores `.claude/worktrees/` + `.claude/settings.local.json`.
 - **Still open:** worktrees share the SAME Neon `production` DB, so parallel `prisma db push` / `npm run reset` collide. True isolation = a Neon branch per worktree wired into the bootstrap (needs Neon CLI re-auth — the broad key was revoked, §3). Not built yet.
+
+**2026-09-27 (cont.) — One-tap reschedule/cancel link (F-03)**
+- First feature built in a **git worktree** per the new parallel-session rule (`.claude/worktrees/reschedule-link`).
+- Added 4 fields to `Appointment` (`patientResponse`, `responseNote`, `respondedAt`, `requestHandled`) — additive `prisma db push` to the shared Neon DB (no reset, to protect the parallel session).
+- **Login-free patient page `/appt/[id]`** (rendered bare via `src/middleware.ts` + a `layout.tsx` branch): shows the appointment and lets the patient **Confirm / Reschedule / Cancel** (`AppointmentActions` + the public `respondToAppointment` action). Confirm → status CONFIRMED; Reschedule → RESCHEDULED + preferred-time note; Cancel → CANCELLED (never `NO_SHOW`).
+- **Desk surface** on Today's Queue: a "Reschedule & cancellation requests" card lists patient-initiated responses (any date) with the note + phone, plus **Mark handled** (`markRequestHandled`).
+- **WhatsApp**: CONFIRM / REMINDER_24H / REMINDER_2H bodies + template params now carry the manage link (`APP_BASE_URL` + `/appt/<id>`); `WHATSAPP.md` + `.env.example` updated (the appt templates gained a trailing link param).
+- Seed: Arjun confirmed via link (today), Fatima (reschedule) + Prakash (cancel) as pending desk requests, + a matching reminder in the outbox. **Seed code updated but NOT run** (shared DB) — the daily reseed / next `npm run reset` will surface it.
+- Verified end-to-end on a manual worktree dev server (port 3005 — the app preview binds to the primary root, see §6): patient page (mobile, bare) → reschedule → banner → desk card → mark handled, and the link in the outbox. Built clean.
 
 <!-- Add new dated entries above this line as work continues. -->

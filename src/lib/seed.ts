@@ -106,7 +106,33 @@ export async function seedDemo(prisma: PrismaClient) {
   await appt(P.anita, drGaurav, "FOLLOWUP", at(10, 45), "CHECKED_IN", "WHATSAPP", 5, "Fracture review");
   await appt(P.venkatesh, drGaurav, "CONSULT", at(11, 0), "CHECKED_IN", "WALK_IN", 6, "Wrist injury (fall)");
   await appt(P.fatima, drGaurav, "CONSULT", at(11, 30), "BOOKED", "PHONE", 7, "Neck pain");
-  await appt(P.arjun, drGaurav, "CONSULT", at(12, 0), "BOOKED", "WHATSAPP", 8, "Ankle sprain");
+  const aArjun = await appt(P.arjun, drGaurav, "CONSULT", at(12, 0), "BOOKED", "WHATSAPP", 8, "Ankle sprain");
+
+  // F-03 — patient self-service via the WhatsApp reschedule/cancel link.
+  // Arjun confirmed today's slot from the link (shows as patient-confirmed in the queue).
+  await prisma.appointment.update({
+    where: { id: aArjun.id },
+    data: { status: "CONFIRMED", patientResponse: "CONFIRMED", respondedAt: at(8, 40), requestHandled: true },
+  });
+  // Two upcoming appointments where the patient tapped reschedule / cancel — these surface to
+  // the desk as freed/rebook slots (Today's Queue → "Reschedule & cancellation requests").
+  const inDays = (n: number, h: number, m = 0) => new Date(at(h, m).getTime() + n * 86400000);
+  const aFatimaResched = await prisma.appointment.create({
+    data: {
+      patientId: P.fatima.id, providerId: drGaurav.id, serviceType: "FOLLOWUP", scheduledStart: inDays(2, 11, 30),
+      status: "RESCHEDULED", source: "WHATSAPP", reason: "Neck pain review",
+      patientResponse: "RESCHEDULE", responseNote: "Can we do any morning next week? Mornings are easier for me.",
+      respondedAt: daysAgo(0), requestHandled: false,
+    },
+  });
+  await prisma.appointment.create({
+    data: {
+      patientId: P.prakash.id, providerId: drGaurav.id, serviceType: "CONSULT", scheduledStart: inDays(1, 10, 0),
+      status: "CANCELLED", source: "WHATSAPP", reason: "Knee pain",
+      patientResponse: "CANCELLED", responseNote: "Out of town this week — will call to rebook.",
+      respondedAt: daysAgo(0), requestHandled: false,
+    },
+  });
   await appt(P.deepa, priya, "PHYSIO", at(10, 0), "CHECKED_IN", "WALK_IN", 1, "Knee rehab session 9");
   await appt(P.rajesh, priya, "PHYSIO", at(11, 0), "BOOKED", "PHONE", 2, "Back pain session 3");
 
@@ -235,6 +261,7 @@ export async function seedDemo(prisma: PrismaClient) {
   await msg(P.arjun, "REMINDER_24H", "Reminder: Arjun Menon, you have an appointment with Dr. Gaurav Sharma at OrthoCure Clinic tomorrow at 12:00 PM. Reply CANCEL or RESCHEDULE if you can't make it. — OrthoCure Clinic", "DELIVERED", daysAgo(0));
   await msg(P.lakshmi, "REPORT_SHARE", "Hello Lakshmi Devi, your Right Knee X-ray from OrthoCure Clinic is ready and attached. Keep it for your records. — OrthoCure Clinic", "DELIVERED", at(10, 5));
   await msg(P.deepa, "RECALL", "Hi Deepa Shetty, your Knee Rehabilitation package has 2 sessions left and expires soon. Reply to book your next session. — OrthoCure Clinic", "SENT", at(9, 0));
+  await msg(P.fatima, "REMINDER_24H", `Reminder: Fatima Begum, you have an appointment with Dr. Gaurav Sharma at OrthoCure Clinic for your neck pain review. Can't make it? Reschedule or cancel here: https://care4you.vercel.app/appt/${aFatimaResched.id} — OrthoCure Clinic`, "READ", daysAgo(0));
 
   // Referral letters (F-08)
   await prisma.referral.create({
