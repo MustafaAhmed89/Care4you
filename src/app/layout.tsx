@@ -27,7 +27,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             logoInitials={clinic?.logoInitials ?? "OC"}
           />
           <div className="flex min-w-0 flex-1 flex-col">
-            <TopBar role={role} clinicPhone={clinic?.phone ?? ""} />
+            <TopBar
+              role={role}
+              clinicPhone={clinic?.phone ?? ""}
+              clinicName={clinic?.name ?? "OrthoCare"}
+              logoInitials={clinic?.logoInitials ?? "OC"}
+            />
             <main className="flex-1 p-4 md:p-6">{children}</main>
           </div>
         </div>

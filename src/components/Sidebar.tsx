@@ -2,29 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  Users,
-  Activity,
-  ScanLine,
-  Receipt,
-  MessageCircle,
-  BarChart3,
-  Settings,
-  type LucideIcon,
-} from "lucide-react";
-import { ROLE_NAV, type NavKey } from "@/lib/constants";
-
-const NAV: { key: NavKey; label: string; href: string; icon: LucideIcon }[] = [
-  { key: "queue", label: "Queue · Today", href: "/", icon: LayoutDashboard },
-  { key: "patients", label: "Patients", href: "/patients", icon: Users },
-  { key: "physio", label: "Physiotherapy", href: "/physio", icon: Activity },
-  { key: "imaging", label: "X-ray · Imaging", href: "/imaging", icon: ScanLine },
-  { key: "billing", label: "Billing", href: "/billing", icon: Receipt },
-  { key: "messages", label: "WhatsApp", href: "/messages", icon: MessageCircle },
-  { key: "reports", label: "Reports", href: "/reports", icon: BarChart3 },
-  { key: "settings", label: "Settings", href: "/settings", icon: Settings },
-];
+import { NAV } from "@/lib/nav";
+import { ROLE_NAV } from "@/lib/constants";
 
 export default function Sidebar({
   role,
@@ -66,15 +45,13 @@ export default function Sidebar({
                 active ? "bg-white/15 font-medium text-white" : "text-brand-100 hover:bg-white/10"
               }`}
             >
-              <Icon className="h-4.5 w-4.5" size={18} />
+              <Icon size={18} />
               {n.label}
             </Link>
           );
         })}
       </nav>
-      <div className="border-t border-white/10 px-5 py-3 text-[11px] text-brand-300">
-        Demo build · v0.1
-      </div>
+      <div className="border-t border-white/10 px-5 py-3 text-[11px] text-brand-300">Demo build · v0.1</div>
     </aside>
   );
 }
