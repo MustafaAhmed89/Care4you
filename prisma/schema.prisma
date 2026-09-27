@@ -46,6 +46,14 @@ model Staff {
   isProvider Boolean @default(false) // shows in queue/booking (doctor + physios)
   createdAt DateTime @default(now())
 
+  // F-23 real auth (additive; nullable so existing rows are valid until seeded/invited).
+  // Email uniqueness is enforced in app code for now; the DB-level UNIQUE(email) index is
+  // deferred because adding it needs `prisma db push --accept-data-loss` (safe here — a
+  // brand-new all-NULL column — but held for the owner to apply). See F23-REAL-AUTH-PLAN §4.
+  email        String?
+  passwordHash String?
+  lastLoginAt  DateTime?
+
   appointments Appointment[]
   visits       Visit[]
   physioSessions PhysioSession[] @relation("TherapistSessions")
