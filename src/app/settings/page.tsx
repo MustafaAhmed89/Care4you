@@ -1,8 +1,20 @@
 import { notFound } from "next/navigation";
+import { Download, Database } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { updateClinic } from "@/app/actions";
 import { PageHeader, Card, CardHeader } from "@/components/ui";
 import { fmtDate } from "@/lib/format";
+
+// F-26 — CSV exports offered on the Settings page (paired with the full JSON backup).
+const CSV_EXPORTS: [string, string][] = [
+  ["patients", "Patients"],
+  ["appointments", "Appointments"],
+  ["visits", "Visits"],
+  ["invoices", "Invoices"],
+  ["payments", "Payments"],
+  ["imaging", "Imaging"],
+  ["physio", "Physio"],
+];
 
 export const dynamic = "force-dynamic";
 
@@ -88,6 +100,31 @@ export default async function SettingsPage() {
           <button className="btn-primary">Save settings</button>
         </div>
       </form>
+
+      {/* F-26 — data export / backup */}
+      <Card className="mt-5">
+        <CardHeader title="Export & backup" subtitle="Your data is always yours — download anytime, no lock-in" />
+        <div className="p-5">
+          <p className="mb-3 text-sm text-slate-600">
+            Download any record type as a spreadsheet (CSV), or a full backup of everything as JSON.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {CSV_EXPORTS.map(([slug, label]) => (
+              <a key={slug} href={`/api/export?entity=${slug}`} className="btn-ghost btn-sm">
+                <Download size={14} /> {label}
+              </a>
+            ))}
+          </div>
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <a href="/api/export?entity=all" className="btn-primary">
+              <Database size={16} /> Download full backup (JSON)
+            </a>
+            <p className="mt-2 text-[11px] text-slate-400">
+              Includes all records — patients, visits, billing, imaging, physio, messages, referrals. Restricted to the owner/admin.
+            </p>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }
