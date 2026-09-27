@@ -158,6 +158,7 @@ npm run reset      # wipe + reload fresh demo data (targets Neon)
 ## 9. Related docs in this repo
 
 - `OrthoCare-Clinic-MVP-Requirements.md` — the full PRD (personas, 18 pain points, 30 features, data model, regulatory, competitive, pricing, demo script). **Feed this back to extend features.**
+- `DEMO.md` — **living demo use-case catalog** (every demoable use case, click-path, talking point). **Update it in the same PR whenever you build/change a feature** (see CLAUDE.md).
 - `README.md` — app overview + local run.
 - `DEPLOY.md` — Neon + Vercel deploy runbook (mostly done now).
 - `.env.example` — required env vars.

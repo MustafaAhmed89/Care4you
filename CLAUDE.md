@@ -64,3 +64,7 @@ in `.claude/settings.json`).
 - `.env` is gitignored (real Neon credentials) — never commit it.
 - More conventions, gotchas, and the backlog live in [`JOURNAL.md`](JOURNAL.md);
   read it at the start of a session.
+- **Keep the docs current in the same PR as the feature.** When you build or change
+  a feature: (1) add a session-log entry + update the backlog in [`JOURNAL.md`](JOURNAL.md),
+  and (2) add/refresh its demo use case + the status table in [`DEMO.md`](DEMO.md)
+  (the living demo use-case catalog) and bump its "Last updated" date.
