@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Play, Check, Ban, FileText, Bell, Eye } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { requireResource } from "@/lib/session";
 import { updateApptStatus, sendMessage, markRequestHandled } from "@/app/actions";
 import { PageHeader, StatCard, Card, CardHeader, Badge, Avatar, EmptyState } from "@/components/ui";
 import RegisterWalkInForm from "@/components/RegisterWalkInForm";
@@ -11,6 +12,7 @@ import { todayRange } from "@/lib/day";
 export const dynamic = "force-dynamic";
 
 export default async function QueuePage() {
+  await requireResource("queue");
   const { start, end } = todayRange();
 
   const [providers, appts, payments, requests] = await Promise.all([

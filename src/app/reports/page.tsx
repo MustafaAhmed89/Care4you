@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { requireResource } from "@/lib/session";
 import { PageHeader, Card, CardHeader, StatCard } from "@/components/ui";
 import { inr } from "@/lib/format";
 import { format, subDays } from "date-fns";
@@ -17,6 +18,7 @@ const ITEM_LABELS: Record<string, string> = {
 };
 
 export default async function ReportsPage() {
+  await requireResource("reports");
   const { start, end } = todayRange();
   const weekAgo = subDays(start, 6);
 

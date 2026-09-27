@@ -1,5 +1,6 @@
 import { MessageCircle, Check, CheckCheck } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { requireResource } from "@/lib/session";
 import { sendMessage } from "@/app/actions";
 import { PageHeader, Card, CardHeader, StatCard, EmptyState } from "@/components/ui";
 import { fmtDateTime } from "@/lib/format";
@@ -8,6 +9,7 @@ import { MESSAGE_TYPE_LABELS } from "@/lib/constants";
 export const dynamic = "force-dynamic";
 
 export default async function MessagesPage() {
+  await requireResource("messages");
   const [messages, patients] = await Promise.all([
     prisma.message.findMany({ include: { patient: true }, orderBy: { createdAt: "desc" }, take: 60 }),
     prisma.patient.findMany({ where: { softDeleted: false }, orderBy: { name: "asc" } }),

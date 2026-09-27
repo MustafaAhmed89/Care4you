@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { requireResource } from "@/lib/session";
 import PrintButton from "@/components/PrintButton";
 import { BackLink } from "@/components/ui";
 import { inr, fmtDate, fmtDateTime } from "@/lib/format";
@@ -7,6 +8,7 @@ import { inr, fmtDate, fmtDateTime } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 export default async function ReceiptPage({ params }: { params: { invoiceId: string } }) {
+  await requireResource("billing");
   const [inv, clinic] = await Promise.all([
     prisma.invoice.findUnique({
       where: { id: params.invoiceId },

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Download, Database } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { requireResource } from "@/lib/session";
 import { updateClinic } from "@/app/actions";
 import { PageHeader, Card, CardHeader } from "@/components/ui";
 import { fmtDate } from "@/lib/format";
@@ -19,6 +20,7 @@ const CSV_EXPORTS: [string, string][] = [
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
+  await requireResource("settings");
   const clinic = await prisma.clinic.findFirst();
   if (!clinic) notFound();
 

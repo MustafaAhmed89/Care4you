@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Dumbbell } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { requireResource } from "@/lib/session";
 import NewAssessmentForm from "@/components/NewAssessmentForm";
 import { Card, CardHeader, Badge, Avatar, EmptyState, BackLink } from "@/components/ui";
 import { fmtDate, initials, ageGender } from "@/lib/format";
@@ -51,6 +52,7 @@ export default async function PatientPhysioPage({
   params: { id: string };
   searchParams: { saved?: string };
 }) {
+  await requireResource("physio");
   const [patient, therapists] = await Promise.all([
     prisma.patient.findUnique({
       where: { id: params.id },

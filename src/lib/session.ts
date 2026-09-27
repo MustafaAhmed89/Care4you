@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { roleCan, type ResourceKey } from "@/lib/constants";
 
 // F-23 — real session helpers (replaces the demo `oc_role` cookie / role-switcher).
 export type SessionUser = { staffId: string; role: string; name: string; email: string | null };
@@ -18,10 +19,17 @@ export async function requireUser(): Promise<SessionUser> {
   return u;
 }
 
-// Role gate for pages/actions (used broadly in PR-B). Redirects to the dashboard if
-// the signed-in user's role isn't in `roles` (empty roles = any signed-in user).
+// Action gate (F-23 PR-B). Fail-closed: the signed-in user's role MUST be listed.
+// Denied → redirect to /patients (a page every role can open, so never loops).
 export async function requireRole(...roles: string[]): Promise<SessionUser> {
   const u = await requireUser();
-  if (roles.length && !roles.includes(u.role)) redirect("/");
+  if (!roles.includes(u.role)) redirect("/patients");
+  return u;
+}
+
+// Page gate (F-23 PR-B): enforce a resource's roles from the single RESOURCE_ROLES map.
+export async function requireResource(resource: ResourceKey): Promise<SessionUser> {
+  const u = await requireUser();
+  if (!roleCan(u.role, resource)) redirect("/patients");
   return u;
 }

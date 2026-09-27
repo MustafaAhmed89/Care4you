@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { requireResource } from "@/lib/session";
 import { PageHeader, BackLink, Avatar } from "@/components/ui";
 import NewVisitForm from "@/components/NewVisitForm";
 import { initials, ageGender } from "@/lib/format";
@@ -13,6 +14,7 @@ export default async function NewVisitPage({
   params: { id: string };
   searchParams: { providerId?: string; apptId?: string };
 }) {
+  await requireResource("visit");
   const patient = await prisma.patient.findUnique({ where: { id: params.id } });
   if (!patient) notFound();
 

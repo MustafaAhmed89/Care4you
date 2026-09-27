@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { requireResource } from "@/lib/session";
 import { addPayment } from "@/app/actions";
 import { PageHeader, Card, CardHeader, Badge, StatCard, EmptyState } from "@/components/ui";
 import { inr, fmtDate } from "@/lib/format";
@@ -9,6 +10,7 @@ import { todayRange } from "@/lib/day";
 export const dynamic = "force-dynamic";
 
 export default async function BillingPage() {
+  await requireResource("billing");
   const { start, end } = todayRange();
   const [todayPayments, invoices] = await Promise.all([
     prisma.payment.findMany({ where: { paidAt: { gte: start, lte: end } }, include: { invoice: { include: { patient: true } } } }),

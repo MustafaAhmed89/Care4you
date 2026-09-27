@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { requireResource } from "@/lib/session";
 import PrintButton from "@/components/PrintButton";
 import { BackLink } from "@/components/ui";
 import { fmtDate, ageGender } from "@/lib/format";
@@ -12,6 +13,7 @@ const PROVIDER_TITLE: Record<string, string> = {
 };
 
 export default async function ReferralPrintPage({ params }: { params: { id: string } }) {
+  await requireResource("referral");
   const [ref, clinic] = await Promise.all([
     prisma.referral.findUnique({
       where: { id: params.id },

@@ -11,7 +11,7 @@
 
 **✅ Locked 2026-09-28:** all defaults (D1–D5) accepted · demo access = **Both** (one-click demo
 logins in PR-A + owner "View as" switcher in PR-C) · tracking = **JOURNAL only** (no Jira).
-**PR-A is built & verified** (see §8 and JOURNAL); PR-B/PR-C pending.
+**PR-A + PR-B are built & verified** (see §8 and JOURNAL); PR-C pending.
 
 The table below records the decisions (recommended column = chosen).
 
@@ -219,10 +219,11 @@ Three reviewable PRs (each its own worktree + preview URL), smallest-blast-radiu
 - Swap `layout.tsx` + `/api/export` from `getCurrentRole()` to the session.
 - *Verified: unauth→/login, owner full shell, logout, front-desk restricted sidebar. Build clean.*
 
-**PR-B — Authorization pass (the security boundary)** · ~1.5–2 d
-- `ROLE_RESOURCES` single source of truth; `requireRole()` on every page + every action + `/api/export`.
-- Keep `respondToAppointment` / `/appt/*` public; remove `setRole`.
-- Cross-role test pass (all 5 roles × guarded routes/actions + public link).
+**PR-B — Authorization pass (the security boundary)** · ✅ built & verified 2026-09-28
+- Single source of truth in `constants.ts`: `RESOURCE_ROLES` (pages + menus) + `ACTION_ROLES` (mutations); `ROLE_NAV` now derived from it (front-desk gained the imaging menu per the matrix).
+- `requireResource()` on all **18** staff pages; `requireRole(...ACTION_ROLES.X)` on all **19** mutating actions; `/api/export` stays owner/admin (PR-A). Fail-closed → redirect to `/patients`.
+- `respondToAppointment` / `/appt/*` kept public; `setRole` was already removed in PR-A.
+- Verified: front-desk blocked from `/reports` + `/settings` (→ `/patients`), owner allowed; logins return correct role; `npm run build` clean.
 
 **PR-C — Staff account management** · ~0.5–1 d
 - `/settings` staff CRUD: add/invite, edit role, activate/deactivate, reset password.

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Share2, ScanLine, ShieldCheck, X } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { requireResource } from "@/lib/session";
 import { shareStudy, cancelImagingOrder } from "@/app/actions";
 import { PageHeader, Card, CardHeader, Badge, StatCard, EmptyState } from "@/components/ui";
 import NewImagingOrderForm from "@/components/NewImagingOrderForm";
@@ -15,6 +16,7 @@ function sideLabel(side?: string | null) {
 }
 
 export default async function ImagingPage() {
+  await requireResource("imaging");
   const [clinic, orders, studies, patients, providers, staff] = await Promise.all([
     prisma.clinic.findFirst(),
     prisma.imagingOrder.findMany({

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { requireResource } from "@/lib/session";
 import { BackLink, Avatar } from "@/components/ui";
 import NewHepForm from "@/components/NewHepForm";
 import { initials, ageGender } from "@/lib/format";
@@ -7,6 +8,7 @@ import { initials, ageGender } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 export default async function NewHepPage({ params }: { params: { id: string } }) {
+  await requireResource("hep");
   const [patient, therapists] = await Promise.all([
     prisma.patient.findUnique({ where: { id: params.id } }),
     prisma.staff.findMany({ where: { role: "PHYSIO", active: true } }),

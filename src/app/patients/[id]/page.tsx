@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FileText, Printer, Share2, Bell, Stethoscope, ArrowUpRight } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { requireResource } from "@/lib/session";
 import { addPayment, recordPhysioSession, shareStudy, sendMessage } from "@/app/actions";
 import { Card, CardHeader, Badge, Avatar, EmptyState, BackLink } from "@/components/ui";
 import UploadStudyForm from "@/components/UploadStudyForm";
@@ -18,6 +19,7 @@ export default async function PatientPage({
   params: { id: string };
   searchParams: { saved?: string };
 }) {
+  await requireResource("patients");
   const [patient, doctor, physios] = await Promise.all([
     prisma.patient.findUnique({
       where: { id: params.id },

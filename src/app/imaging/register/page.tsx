@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { requireResource } from "@/lib/session";
 import PrintButton from "@/components/PrintButton";
 import { BackLink } from "@/components/ui";
 import { fmtDate, ageGender } from "@/lib/format";
@@ -12,6 +13,7 @@ function sideLabel(side?: string | null) {
 
 // F-12 — printable AERB / radiation exposure register (statutory X-ray log).
 export default async function AerbRegisterPage() {
+  await requireResource("imaging");
   const [clinic, studies] = await Promise.all([
     prisma.clinic.findFirst(),
     prisma.imagingStudy.findMany({

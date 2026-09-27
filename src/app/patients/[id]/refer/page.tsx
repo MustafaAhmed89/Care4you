@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { requireResource } from "@/lib/session";
 import { BackLink, Avatar } from "@/components/ui";
 import NewReferralForm from "@/components/NewReferralForm";
 import { initials, ageGender, fmtDate } from "@/lib/format";
@@ -13,6 +14,7 @@ export default async function NewReferralPage({
   params: { id: string };
   searchParams: { providerId?: string; visitId?: string };
 }) {
+  await requireResource("referral");
   const patient = await prisma.patient.findUnique({ where: { id: params.id } });
   if (!patient) notFound();
 

@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { requireResource } from "@/lib/session";
 import { PageHeader, Card, Avatar, EmptyState } from "@/components/ui";
 import { fmtDate, initials, ageGender } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
 export default async function PatientsPage({ searchParams }: { searchParams: { q?: string } }) {
+  await requireResource("patients");
   const q = (searchParams.q || "").trim().toLowerCase();
 
   const all = await prisma.patient.findMany({

@@ -176,7 +176,16 @@ export const EXERCISE_LIBRARY: LibraryExercise[] = [
   { name: "Wrist flexor stretch", instructions: "Extend the arm, gently pull the fingers back with the other hand.", sets: "3", reps: "hold 20s", frequency: "Daily" },
 ];
 
-// Which nav items each role sees (demo RBAC).
+// ── RBAC (F-23 PR-B) ──────────────────────────────────────────────────────
+// Single source of truth for role-based access. `RESOURCE_ROLES` drives BOTH the
+// sidebar menus and the server-side PAGE guards (see requireResource). Server
+// actions are gated separately by `ACTION_ROLES`, because viewing a page ≠ doing
+// its mutations (e.g. a physio sees the queue but can't register a walk-in).
+const R = ROLES;
+export const ALL_ROLES: string[] = [R.OWNER_DOCTOR, R.FRONT_DESK, R.PHYSIO, R.PHARMACIST, R.ADMIN];
+
+// Nav keys appear in the sidebar; the extra resource keys (visit/hep/referral/rx)
+// are detail/print pages with no menu item but still role-guarded.
 export type NavKey =
   | "queue"
   | "patients"
@@ -186,11 +195,54 @@ export type NavKey =
   | "messages"
   | "reports"
   | "settings";
+export type ResourceKey = NavKey | "visit" | "hep" | "referral" | "rx";
 
-export const ROLE_NAV: Record<string, NavKey[]> = {
-  OWNER_DOCTOR: ["queue", "patients", "physio", "imaging", "billing", "messages", "reports", "settings"],
-  FRONT_DESK: ["queue", "patients", "billing", "messages"],
-  PHYSIO: ["queue", "patients", "physio"],
-  PHARMACIST: ["patients", "billing"],
-  ADMIN: ["queue", "patients", "physio", "imaging", "billing", "messages", "reports", "settings"],
+export const RESOURCE_ROLES: Record<ResourceKey, string[]> = {
+  queue: [R.OWNER_DOCTOR, R.FRONT_DESK, R.PHYSIO, R.ADMIN],
+  patients: ALL_ROLES,
+  visit: [R.OWNER_DOCTOR, R.ADMIN],
+  physio: [R.OWNER_DOCTOR, R.PHYSIO, R.ADMIN],
+  hep: [R.OWNER_DOCTOR, R.PHYSIO, R.ADMIN],
+  referral: [R.OWNER_DOCTOR, R.ADMIN],
+  imaging: [R.OWNER_DOCTOR, R.FRONT_DESK, R.ADMIN],
+  billing: [R.OWNER_DOCTOR, R.FRONT_DESK, R.PHARMACIST, R.ADMIN],
+  rx: [R.OWNER_DOCTOR, R.ADMIN],
+  messages: [R.OWNER_DOCTOR, R.FRONT_DESK, R.ADMIN],
+  reports: [R.OWNER_DOCTOR, R.ADMIN],
+  settings: [R.OWNER_DOCTOR, R.ADMIN],
 };
+
+export function roleCan(role: string, resource: ResourceKey): boolean {
+  return (RESOURCE_ROLES[resource] ?? []).includes(role);
+}
+
+// Server action → allowed roles. `respondToAppointment` is intentionally absent —
+// it is the public, login-free patient link (/appt/[id]) and must stay open.
+export const ACTION_ROLES = {
+  registerWalkIn: [R.OWNER_DOCTOR, R.FRONT_DESK, R.ADMIN],
+  updateApptStatus: [R.OWNER_DOCTOR, R.FRONT_DESK, R.PHYSIO, R.ADMIN],
+  createVisit: [R.OWNER_DOCTOR, R.ADMIN],
+  createInvoice: [R.OWNER_DOCTOR, R.FRONT_DESK, R.PHARMACIST, R.ADMIN],
+  addPayment: [R.OWNER_DOCTOR, R.FRONT_DESK, R.PHARMACIST, R.ADMIN],
+  recordPhysioSession: [R.OWNER_DOCTOR, R.PHYSIO, R.ADMIN],
+  createPhysioPackage: [R.OWNER_DOCTOR, R.PHYSIO, R.ADMIN],
+  createAssessment: [R.OWNER_DOCTOR, R.PHYSIO, R.ADMIN],
+  createHep: [R.OWNER_DOCTOR, R.PHYSIO, R.ADMIN],
+  shareHep: [R.OWNER_DOCTOR, R.PHYSIO, R.ADMIN],
+  createReferral: [R.OWNER_DOCTOR, R.ADMIN],
+  uploadStudy: [R.OWNER_DOCTOR, R.FRONT_DESK, R.ADMIN],
+  shareStudy: [R.OWNER_DOCTOR, R.FRONT_DESK, R.ADMIN],
+  createImagingOrder: [R.OWNER_DOCTOR, R.ADMIN],
+  cancelImagingOrder: [R.OWNER_DOCTOR, R.ADMIN],
+  captureImagingStudy: [R.OWNER_DOCTOR, R.FRONT_DESK, R.ADMIN],
+  sendMessage: [R.OWNER_DOCTOR, R.FRONT_DESK, R.ADMIN],
+  markRequestHandled: [R.OWNER_DOCTOR, R.FRONT_DESK, R.ADMIN],
+  updateClinic: [R.OWNER_DOCTOR, R.ADMIN],
+} satisfies Record<string, string[]>;
+
+const NAV_KEYS: NavKey[] = ["queue", "patients", "physio", "imaging", "billing", "messages", "reports", "settings"];
+
+// Derived from RESOURCE_ROLES so the sidebar and the page guards can never drift.
+export const ROLE_NAV: Record<string, NavKey[]> = Object.fromEntries(
+  ALL_ROLES.map((role) => [role, NAV_KEYS.filter((k) => RESOURCE_ROLES[k].includes(role))]),
+);
