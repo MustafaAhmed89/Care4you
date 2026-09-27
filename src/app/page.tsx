@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { Play, Check, Ban, FileText, Bell, Eye } from "lucide-react";
 import { prisma } from "@/lib/db";
-import { updateApptStatus, sendMessage } from "@/app/actions";
-import { PageHeader, StatCard, Card, Badge, Avatar, EmptyState } from "@/components/ui";
+import { updateApptStatus, sendMessage, markRequestHandled } from "@/app/actions";
+import { PageHeader, StatCard, Card, CardHeader, Badge, Avatar, EmptyState } from "@/components/ui";
 import RegisterWalkInForm from "@/components/RegisterWalkInForm";
-import { inr, fmtTime, initials, ageGender } from "@/lib/format";
-import { STATUS_LABELS, STATUS_BADGE, SERVICE_LABELS, SOURCE_LABELS } from "@/lib/constants";
+import { inr, fmtTime, fmtDateTime, initials, ageGender } from "@/lib/format";
+import { STATUS_LABELS, STATUS_BADGE, SERVICE_LABELS, SOURCE_LABELS, PATIENT_RESPONSE_LABELS } from "@/lib/constants";
 import { todayRange } from "@/lib/day";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function QueuePage() {
   const { start, end } = todayRange();
 
-  const [providers, appts, payments] = await Promise.all([
+  const [providers, appts, payments, requests] = await Promise.all([
     prisma.staff.findMany({ where: { isProvider: true, active: true }, orderBy: { role: "asc" } }),
     prisma.appointment.findMany({
       where: { scheduledStart: { gte: start, lte: end } },
@@ -21,6 +21,12 @@ export default async function QueuePage() {
       orderBy: [{ tokenNo: "asc" }, { scheduledStart: "asc" }],
     }),
     prisma.payment.findMany({ where: { paidAt: { gte: start, lte: end } } }),
+    // F-03: patient-initiated reschedule/cancel requests awaiting the desk (any date)
+    prisma.appointment.findMany({
+      where: { patientResponse: { in: ["RESCHEDULE", "CANCELLED"] }, requestHandled: false },
+      include: { patient: true, provider: true },
+      orderBy: { respondedAt: "desc" },
+    }),
   ]);
 
   const waiting = appts.filter((a) => a.status === "CHECKED_IN").length;
@@ -49,6 +55,46 @@ export default async function QueuePage() {
         <StatCard label="No-shows" value={noShows} accent="text-red-600" />
         <StatCard label="Collected today" value={inr(collections)} accent="text-slate-900" />
       </div>
+
+      {requests.length > 0 && (
+        <Card className="mb-6 border-amber-200">
+          <CardHeader
+            title={`Reschedule & cancellation requests (${requests.length})`}
+            subtitle="Patients responded via their WhatsApp link — call to rebook or refill the freed slot"
+          />
+          <div className="divide-y divide-slate-100">
+            {requests.map((r) => (
+              <div key={r.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link href={`/patients/${r.patientId}`} className="text-sm font-medium text-slate-800 hover:text-brand-700">
+                      {r.patient.name}
+                    </Link>
+                    <Badge className={r.patientResponse === "CANCELLED" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800"}>
+                      {PATIENT_RESPONSE_LABELS[r.patientResponse ?? ""] ?? r.patientResponse}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    {fmtDateTime(r.scheduledStart)} · {r.provider.name} · {r.patient.phone}
+                  </p>
+                  {r.responseNote && <p className="mt-0.5 text-xs text-slate-600">“{r.responseNote}”</p>}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Link href={`/patients/${r.patientId}`} className="btn-ghost btn-sm">
+                    <Eye size={14} /> Patient
+                  </Link>
+                  <form action={markRequestHandled}>
+                    <input type="hidden" name="id" value={r.id} />
+                    <button className="btn-primary btn-sm">
+                      <Check size={14} /> Mark handled
+                    </button>
+                  </form>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="space-y-6">
         {byProvider.map(({ provider, rows }) => (

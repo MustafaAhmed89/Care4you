@@ -97,6 +97,13 @@ export const REFERRAL_URGENCY_LABELS: Record<string, string> = {
   URGENT: "Urgent",
 };
 
+// Patient self-service response to a reschedule/cancel link (F-03)
+export const PATIENT_RESPONSE_LABELS: Record<string, string> = {
+  CONFIRMED: "Confirmed by patient",
+  RESCHEDULE: "Reschedule requested",
+  CANCELLED: "Cancelled by patient",
+};
+
 // Common onward-referral targets for an ortho + physio clinic (form suggestions).
 export const REFERRAL_SPECIALTIES = [
   "Spine Surgery",

@@ -20,14 +20,16 @@ In **WhatsApp Manager → Message Templates**, create these (category **Utility*
 
 | Template name | Params (in order) | Suggested body |
 |---|---|---|
-| `appt_confirmation` | 1 name, 2 doctor, 3 clinic, 4 when, 5 token | `Hello {{1}}, your appointment with {{2}} at {{3}} is confirmed for {{4}}. Token: {{5}}. Reply to reschedule.` |
-| `appt_reminder_24h` | 1 name, 2 doctor, 3 clinic, 4 when | `Reminder: {{1}}, you have an appointment with {{2}} at {{3}} on {{4}}. Reply CANCEL or RESCHEDULE if you can't make it.` |
-| `appt_reminder_2h` | 1 name, 2 doctor, 3 clinic, 4 when, 5 token | `See you soon, {{1}}! Your appointment with {{2}} at {{3}} is at {{4}}. Your token is {{5}}.` |
+| `appt_confirmation` | 1 name, 2 doctor, 3 clinic, 4 when, 5 token, 6 manage link | `Hello {{1}}, your appointment with {{2}} at {{3}} is confirmed for {{4}}. Token: {{5}}. Confirm, reschedule or cancel: {{6}}` |
+| `appt_reminder_24h` | 1 name, 2 doctor, 3 clinic, 4 when, 5 manage link | `Reminder: {{1}}, you have an appointment with {{2}} at {{3}} on {{4}}. Can't make it? Reschedule or cancel here: {{5}}` |
+| `appt_reminder_2h` | 1 name, 2 doctor, 3 clinic, 4 when, 5 token, 6 manage link | `See you soon, {{1}}! Your appointment with {{2}} at {{3}} is at {{4}}. Your token is {{5}}. Manage your appointment: {{6}}` |
 | `report_ready` | 1 name, 2 report, 3 clinic | `Hello {{1}}, your {{2}} from {{3}} is ready. Please keep it for your records.` |
 | `followup_recall` | 1 name, 2 doctor, 3 clinic | `Hi {{1}}, it's time for your follow-up with {{2}} at {{3}}. Reply to book a slot.` |
 | `payment_reminder` | 1 name, 2 amount, 3 clinic | `Hello {{1}}, a gentle reminder of an outstanding balance of {{2}} at {{3}}. You can pay by UPI at the clinic. Thank you.` |
 
 If you name templates differently, set the `WA_TPL_*` env overrides (see `.env.example`). If you use a non-English language, set `WHATSAPP_TEMPLATE_LANG` to that code and translate the templates. Wait for each template's status to become **Approved** (minutes–hours) before sending.
+
+> **F-03 reschedule/cancel link:** the **last** parameter of the three appointment templates is a one-tap link to the patient's login-free self-service page (`/appt/<id>`), where they can **confirm, reschedule or cancel**. Its base URL comes from `APP_BASE_URL` (defaults to the production domain — see §3). If you'd rather, make it a **URL button** on the template instead of a body parameter and drop that last body param.
 
 ## 3. Set env vars
 
@@ -39,6 +41,7 @@ WHATSAPP_PHONE_NUMBER_ID=<your phone number id>
 WHATSAPP_TOKEN=<your permanent token>
 WHATSAPP_API_VERSION=v21.0        # optional
 WHATSAPP_TEMPLATE_LANG=en          # optional
+APP_BASE_URL=https://care4you.vercel.app   # optional; base for the F-03 reschedule/cancel link
 ```
 Redeploy Vercel after adding them (env vars only apply to new deployments).
 
